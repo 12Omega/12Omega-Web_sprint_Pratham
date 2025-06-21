@@ -1,55 +1,41 @@
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
-import User from '../models/User'; // Changed import style and removed .js
+import { User } from '../models/User';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-
-// Define a basic User interface
-interface IUser {
-  _id: string;
-  username: string; // Kept from your provided version. Remove if not in User model.
-  email: string;
-  firstName?: string; // Added - ensure this is in your User model
-  lastName?: string;  // Added - ensure this is in your User model
-  avatar?: string;    // Added - ensure this is in your User model
-  role?: string;
+interface AuthenticatedRequest extends Request {
+  user?: any;
 }
 
-interface DecodedToken extends JwtPayload {
-  userId: string;
-}
+export const authenticateToken = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
 
-export interface AuthRequest extends Request {
-  user?: IUser;
-}
+  if (!token) {
+    return res.status(401).json({ message: 'Access token missing' });
+  }
 
-export const authenticateToken = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    const secret = process.env.JWT_SECRET || 'your_jwt_secret';
 
-    if (!token) {
-      return res.status(401).json({ message: 'Access token required' });
+    const decoded = jwt.verify(token, secret) as JwtPayload;
+
+    if (!decoded || typeof decoded !== 'object' || !decoded.userId) {
+      return res.status(403).json({ message: 'Invalid token payload' });
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET) as DecodedToken;
-    const userDoc = await User.findById(decoded.userId).select('-password');
+    const user = await User.findById(decoded.userId);
 
-    if (!userDoc) {
-      return res.status(401).json({ message: 'User not found' });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
     }
 
-    // Ensure that the userDoc actually contains firstName, lastName, avatar if you expect them
-    req.user = userDoc.toObject ? userDoc.toObject() as IUser : userDoc as unknown as IUser;
+    req.user = user;
     next();
-  } catch (_error) {
+  } catch (err) {
     return res.status(403).json({ message: 'Invalid token' });
   }
-};
-
-export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {
-  if (req.user?.role !== 'admin') {
-    return res.status(403).json({ message: 'Admin access required' });
-  }
-  next();
 };
