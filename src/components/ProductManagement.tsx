@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Package, Plus, Search, Edit, Trash2, Eye, Filter } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Package, Plus, Search, Edit, Trash2 } from 'lucide-react';
 import axios from 'axios';
 
 interface Product {
@@ -36,12 +36,9 @@ const ProductManagement: React.FC = () => {
     featured: false
   });
 
-  useEffect(() => {
-    fetchProducts();
-  }, [searchTerm, categoryFilter, statusFilter]);
-
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
+      setLoading(true);
       const params = new URLSearchParams();
       if (searchTerm) params.append('search', searchTerm);
       if (categoryFilter) params.append('category', categoryFilter);
@@ -54,7 +51,11 @@ const ProductManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchTerm, categoryFilter, statusFilter]);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

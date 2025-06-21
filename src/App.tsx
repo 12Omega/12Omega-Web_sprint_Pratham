@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout';
-import Login from './components/Login';
+import Login from './components/Login.tsx';
 import Dashboard from './components/Dashboard';
 import UserManagement from './components/UserManagement';
 import ProductManagement from './components/ProductManagement';

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import axios from 'axios';
+import axios, { isAxiosError } from 'axios';
 
 interface User {
   id: string;
@@ -49,7 +49,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const response = await axios.get('http://localhost:5000/api/auth/me');
       setUser(response.data.user);
-    } catch (error) {
+    } catch (_error) { // error variable is not used, prefixed with underscore
       localStorage.removeItem('token');
       delete axios.defaults.headers.common['Authorization'];
     } finally {
@@ -68,8 +68,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       localStorage.setItem('token', token);
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setUser(user);
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Login failed');
+    } catch (err) {
+      let errorMessage = 'Login failed';
+      if (isAxiosError(err) && err.response?.data?.message && typeof err.response.data.message === 'string') {
+        errorMessage = err.response.data.message;
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+      throw new Error(errorMessage);
     }
   };
 

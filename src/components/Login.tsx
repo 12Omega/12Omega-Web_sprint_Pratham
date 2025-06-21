@@ -17,8 +17,16 @@ const Login: React.FC = () => {
 
     try {
       await login(email, password);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      let errorMessage = 'An unknown error occurred during login.';
+      if (typeof err === 'object' && err !== null && 'message' in err && typeof (err as {message: unknown}).message === 'string') {
+        errorMessage = (err as {message: string}).message;
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      } else if (typeof err === 'string') {
+        errorMessage = err;
+      }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

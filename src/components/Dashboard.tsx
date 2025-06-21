@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { format } from 'date-fns';
 import {
   LineChart,
@@ -32,25 +32,26 @@ const Dashboard: React.FC = () => {
     format(new Date(), 'yyyy-MM-dd')
   );
 
-  const fetchData = () => {
+  const fetchData = useCallback(() => {
     setLoading(true);
+    // setError(null); // Optional: clear previous error
     fetch(`/api/dashboard/history?start=${startDate}&end=${endDate}`)
       .then((res) => res.json())
-      .then((res: DashboardData) => {
-        setData(res);
+      .then((resData: DashboardData) => { // Renamed res to resData to avoid conflict if setError(null) is uncommented above
+        setData(resData);
         setLoading(false);
       })
       .catch((err: Error) => {
         setError(err.message);
         setLoading(false);
       });
-  };
+  }, [startDate, endDate]);
 
   useEffect(() => {
     fetchData();
     const interval = setInterval(fetchData, 30000); // auto-refresh every 30s
     return () => clearInterval(interval);
-  }, [startDate, endDate]);
+  }, [fetchData]); // fetchData is now a stable dependency
 
   if (loading) return <p>Loading...</p>;
   if (error) return <p>Error: {error}</p>;
@@ -139,5 +140,8 @@ const Dashboard: React.FC = () => {
 };
 
 export default Dashboard;
+
+
+
 
 
