@@ -3,6 +3,50 @@ router.get('/history', async (req, res) => {
     // Normally, you’d aggregate real data from your DB here
     // For demo, sending sample data for 7 days:
 
+const moment = require('moment');
+
+router.get('/history', async (req, res) => {
+  try {
+    const { start, end } = req.query;
+    const startDate = start ? new Date(start) : moment().subtract(6, 'days').toDate();
+    const endDate = end ? new Date(end) : new Date();
+
+    // Create sample data within the range
+    const userGrowth = [];
+    const sessionActivity = [];
+
+    let current = moment(startDate);
+    while (current <= moment(endDate)) {
+      userGrowth.push({
+        date: current.format('YYYY-MM-DD'),
+        count: Math.floor(Math.random() * 100) + 50,
+      });
+      sessionActivity.push({
+        date: current.format('YYYY-MM-DD'),
+        activeSessions: Math.floor(Math.random() * 50) + 10,
+      });
+      current = current.add(1, 'days');
+    }
+
+    const totalUsers = 500; // Replace with aggregation logic
+    const activeSessions = 42;
+    const recentUsers = 40;
+
+    res.json({
+      totalUsers,
+      activeSessions,
+      recentUsers,
+      userGrowth,
+      sessionActivity,
+    });
+  } catch (error) {
+    console.error('Error fetching filtered dashboard data:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+
+
     const userGrowth = [
       { date: '2025-06-14', count: 50 },
       { date: '2025-06-15', count: 60 },
