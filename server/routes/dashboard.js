@@ -1,33 +1,44 @@
-const express = require('express');
-const router = express.Router();
-const User = require('../models/User'); // your User model
-const Session = require('../models/Session'); // example Session model
-
-// GET /api/dashboard - return dashboard summary data
-router.get('/', async (req, res) => {
+router.get('/history', async (req, res) => {
   try {
-    // Total users
-    const totalUsers = await User.countDocuments();
+    // Normally, you’d aggregate real data from your DB here
+    // For demo, sending sample data for 7 days:
 
-    // Active sessions count (example)
-    const activeSessions = await Session.countDocuments({ active: true });
+    const userGrowth = [
+      { date: '2025-06-14', count: 50 },
+      { date: '2025-06-15', count: 60 },
+      { date: '2025-06-16', count: 70 },
+      { date: '2025-06-17', count: 80 },
+      { date: '2025-06-18', count: 90 },
+      { date: '2025-06-19', count: 100 },
+      { date: '2025-06-20', count: 110 },
+    ];
 
-    // Recent users joined (last 7 days)
-    const recentUsers = await User.find({
-      createdAt: { $gte: new Date(Date.now() - 7*24*60*60*1000) }
-    }).countDocuments();
+    const sessionActivity = [
+      { date: '2025-06-14', activeSessions: 20 },
+      { date: '2025-06-15', activeSessions: 25 },
+      { date: '2025-06-16', activeSessions: 30 },
+      { date: '2025-06-17', activeSessions: 28 },
+      { date: '2025-06-18', activeSessions: 35 },
+      { date: '2025-06-19', activeSessions: 40 },
+      { date: '2025-06-20', activeSessions: 42 },
+    ];
 
-    // You can add more stats here
+    // You can calculate totalUsers, activeSessions, recentUsers same as previous endpoint or fetch real data
+
+    const totalUsers = 110;
+    const activeSessions = 42;
+    const recentUsers = 30;
 
     res.json({
       totalUsers,
       activeSessions,
       recentUsers,
+      userGrowth,
+      sessionActivity,
     });
   } catch (error) {
-    console.error('Error fetching dashboard data:', error);
+    console.error('Error fetching dashboard history data:', error);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
-module.exports = router;
