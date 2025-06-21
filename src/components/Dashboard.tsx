@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Package, TrendingUp, DollarSign, Activity, AlertTriangle } from 'lucide-react';
+import { Users, Package, DollarSign, Activity, AlertTriangle } from 'lucide-react';
 import axios from 'axios';
+// BEFORE
+
+
+// AFTER
+// Remove if not used:
+
 
 interface Stats {
   users: {
