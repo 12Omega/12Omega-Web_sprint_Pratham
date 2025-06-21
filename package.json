@@ -2,12 +2,13 @@
   "name": "smart-parking-app",
   "private": true,
   "version": "0.0.0",
-  "type": "module",
+  "type": "commonjs",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "next start"
   },
   "dependencies": {
     "express": "^5.1.0",
