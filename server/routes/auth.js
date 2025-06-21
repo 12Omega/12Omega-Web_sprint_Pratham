@@ -1,45 +1,29 @@
+// routes/auth.js
 const express = require('express');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
-
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'secret';
+const User = require('../models/User'); // Adjust the path if needed
 
-// Signup
-router.post('/signup', async (req, res) => {
-  const { name, email, password } = req.body;
+// POST /api/auth/register
+router.post('/register', async (req, res) => {
   try {
-    const userExists = await User.findOne({ email });
-    if (userExists) return res.status(400).json({ error: 'User already exists' });
+    // Create a new user instance with data from the request body
+    const newUser = new User({
+      username: req.body.username,
+      email: req.body.email,
+      password: req.body.password
+    });
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({ name, email, password: hashedPassword });
-    await user.save();
+    // Save the user document to MongoDB
+    const savedUser = await newUser.save();
 
-    const token = jwt.sign({ id: user._id }, JWT_SECRET);
-    res.status(201).json({ token });
-  } catch (err) {
-    res.status(500).json({ error: 'Signup failed' });
-  }
-});
-
-// Login
-router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
-  try {
-    const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ error: 'Invalid credentials' });
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ error: 'Invalid credentials' });
-
-    const token = jwt.sign({ id: user._id }, JWT_SECRET);
-    res.status(200).json({ token });
-  } catch (err) {
-    res.status(500).json({ error: 'Login failed' });
+    // Return the saved user (you may want to exclude password in production)
+    res.status(201).json(savedUser);
+  } catch (error) {
+    console.error('Error saving user:', error);
+    res.status(500).json({ message: 'User registration failed', error: error.message });
   }
 });
 
 module.exports = router;
-// added again due to git issue
+
+
