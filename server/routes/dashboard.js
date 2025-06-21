@@ -32,13 +32,15 @@ router.get('/history', async (req, res) => {
     const activeSessions = 42;
     const recentUsers = 40;
 
-    res.json({
-      totalUsers,
-      activeSessions,
-      recentUsers,
-      userGrowth,
-      sessionActivity,
-    });
+res.json({
+  totalUsers,
+  activeSessions,
+  recentUsers,
+  userGrowth,
+  sessionActivity,
+  userRole: 'admin' // ← You can change this to test roles
+});
+
   } catch (error) {
     console.error('Error fetching filtered dashboard data:', error);
     res.status(500).json({ error: 'Internal Server Error' });
