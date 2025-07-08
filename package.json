@@ -8,7 +8,12 @@
     "client": "vite",
     "server": "tsx watch server/index.ts",
     "build": "vite build",
-    "lint": "eslint .",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "lint:server": "eslint server/**/*.ts --fix",
+    "lint:client": "eslint \"client/**/*.{ts,tsx}\" \"src/**/*.{ts,tsx}\" --fix",
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
+    "format:server": "prettier --write \"server/**/*.ts\"",
+    "format:client": "prettier --write \"client/**/*.{ts,tsx}\" \"src/**/*.{ts,tsx}\"",
     "preview": "vite preview"
   },
   "dependencies": {

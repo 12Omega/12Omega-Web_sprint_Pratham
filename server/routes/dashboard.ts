@@ -61,4 +61,3 @@ router.get('/history', async (req: AuthenticatedRequest, res: Response) => {
 });
 
 export default router;
-

@@ -1,31 +1,21 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { Product, IProduct } from '../models/Product';
-import { authenticateToken } from '../middleware/auth'; // Corrected path
-import mongoose from 'mongoose';
+import { IProduct } from '../models/Product'; // IProduct might still be useful for request body typing
+import { authenticateToken } from '../middleware/auth';
+import { ProductService } from '../services/productService';
+import mongoose from 'mongoose'; // Keep for ObjectId.isValid if not handled in service
 
 const router = Router();
-
-// Middleware to verify JWT - apply to all product routes or specific ones as needed
-// For now, let's assume all product modification routes require authentication
-// and fetching products is public. This can be adjusted.
 
 // Create a new product
 router.post('/', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const productData: Partial<IProduct> = req.body;
-    // Ensure required fields are present (basic validation)
-    if (!productData.name || !productData.description || !productData.price || !productData.category || !productData.sku || productData.stock === undefined) {
-      return res.status(400).json({ message: 'Missing required product fields.' });
-    }
-    const newProduct = new Product(productData);
-    await newProduct.save();
+    const newProduct = await ProductService.createProduct(productData);
     res.status(201).json(newProduct);
-  } catch (error) {
-    if (error instanceof mongoose.Error.ValidationError) {
-      return res.status(400).json({ message: 'Validation Error', errors: error.errors });
-    }
-    if (error.code === 11000) { // MongoError: E11000 duplicate key error
-        return res.status(409).json({ message: 'Duplicate SKU or other unique field.', field: error.keyValue });
+  } catch (error: any) {
+    // Service layer now throws structured errors with status
+    if (error.status) {
+      return res.status(error.status).json({ message: error.message, errors: error.errors, field: error.field });
     }
     next(error); // Pass other errors to the global error handler
   }
@@ -34,80 +24,65 @@ router.post('/', authenticateToken, async (req: Request, res: Response, next: Ne
 // Get all products with filtering, sorting, and basic text search
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { category, brand, status, minPrice, maxPrice, search, sortBy, sortOrder } = req.query;
+    // Cast query parameters to string as ProductService expects them that way
+    const queryParams = {
+      category: req.query.category as string | undefined,
+      brand: req.query.brand as string | undefined,
+      status: req.query.status as string | undefined,
+      minPrice: req.query.minPrice as string | undefined,
+      maxPrice: req.query.maxPrice as string | undefined,
+      search: req.query.search as string | undefined,
+      sortBy: req.query.sortBy as string | undefined,
+      sortOrder: req.query.sortOrder as string | undefined,
+      page: req.query.page as string | undefined,
+      limit: req.query.limit as string | undefined,
+    };
 
-    let query: any = {};
-
-    // Text search
-    if (search && typeof search === 'string') {
-      query.$text = { $search: search };
-    }
-
-    // Filtering
-    if (category && typeof category === 'string') query.category = category;
-    if (brand && typeof brand === 'string') query.brand = brand;
-    if (status && typeof status === 'string') query.status = status;
-    if (minPrice && !isNaN(parseFloat(minPrice as string))) {
-      query.price = { ...query.price, $gte: parseFloat(minPrice as string) };
-    }
-    if (maxPrice && !isNaN(parseFloat(maxPrice as string))) {
-      query.price = { ...query.price, $lte: parseFloat(maxPrice as string) };
-    }
-
-    let sortOptions: any = {};
-    if (sortBy && typeof sortBy === 'string') {
-      const order = (sortOrder === 'desc' || sortOrder === '-1') ? -1 : 1;
-      sortOptions[sortBy] = order;
-    } else {
-      sortOptions.createdAt = -1; // Default sort by newest
-    }
-
-    // Pagination (basic example, can be enhanced)
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const skip = (page - 1) * limit;
-
-    const products = await Product.find(query)
-                                  .sort(sortOptions)
-                                  .skip(skip)
-                                  .limit(limit);
+    const result = await ProductService.getAllProducts(queryParams);
     
-    const totalProducts = await Product.countDocuments(query);
-    const totalPages = Math.ceil(totalProducts / limit);
-
-    const productsWithLinks = products.map(product => ({
-      ...product.toObject(),
+    const productsWithLinks = result.data.map(product => ({
+      ...product, // Product is already a plain object from .lean()
       _links: {
         self: { href: `/api/products/${product._id}` }
       }
     }));
     
+    const page = result.pagination.currentPage;
+    const limit = result.pagination.limit;
+    const totalPages = result.pagination.totalPages;
+
+    // Construct full query string for HATEOAS links, excluding page/limit from original if they exist
+    let existingQueryString = '';
+    for (const key in req.query) {
+        if (key !== 'page' && key !== 'limit') {
+            if (existingQueryString === '') existingQueryString += '?';
+            else existingQueryString += '&';
+            existingQueryString += `${encodeURIComponent(key)}=${encodeURIComponent(req.query[key] as string)}`;
+        }
+    }
+    if(existingQueryString !== '' && !existingQueryString.startsWith('?')) existingQueryString = `?${existingQueryString}`;
+
+
     const collectionLinks: any = {
-        self: { href: `/api/products?page=${page}&limit=${limit}${req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : ''}`.replace(/&?page=\d+&?/, '').replace(/&?limit=\d+&?/, '') }, // Keep other query params
-        first: { href: `/api/products?page=1&limit=${limit}${req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : ''}`.replace(/&?page=\d+&?/, '').replace(/&?limit=\d+&?/, '') }
+        self: { href: `/api/products${existingQueryString}${existingQueryString ? '&' : '?'}page=${page}&limit=${limit}` },
+        first: { href: `/api/products${existingQueryString}${existingQueryString ? '&' : '?'}page=1&limit=${limit}` }
     };
     if (page > 1) {
-        collectionLinks.prev = { href: `/api/products?page=${page - 1}&limit=${limit}${req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : ''}`.replace(/&?page=\d+&?/, '').replace(/&?limit=\d+&?/, '') };
+        collectionLinks.prev = { href: `/api/products${existingQueryString}${existingQueryString ? '&' : '?'}page=${page - 1}&limit=${limit}` };
     }
     if (page < totalPages) {
-        collectionLinks.next = { href: `/api/products?page=${page + 1}&limit=${limit}${req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : ''}`.replace(/&?page=\d+&?/, '').replace(/&?limit=\d+&?/, '') };
+        collectionLinks.next = { href: `/api/products${existingQueryString}${existingQueryString ? '&' : '?'}page=${page + 1}&limit=${limit}` };
     }
      if (totalPages > 0) {
-        collectionLinks.last = { href: `/api/products?page=${totalPages}&limit=${limit}${req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : ''}`.replace(/&?page=\d+&?/, '').replace(/&?limit=\d+&?/, '') };
+        collectionLinks.last = { href: `/api/products${existingQueryString}${existingQueryString ? '&' : '?'}page=${totalPages}&limit=${limit}` };
     }
-
 
     res.status(200).json({
       data: productsWithLinks,
-      pagination: {
-        currentPage: page,
-        totalPages,
-        totalProducts,
-        limit
-      },
+      pagination: result.pagination,
       _links: collectionLinks
     });
-  } catch (error) {
+  } catch (error: any) {
     next(error);
   }
 });
@@ -115,36 +90,33 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 // Get a single product by ID
 router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({ message: 'Invalid product ID format.' });
-    }
-    const product = await Product.findById(req.params.id);
+    const product = await ProductService.getProductById(req.params.id);
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
     }
 
-    // ETag generation: simple approach using product's updatedAt timestamp and version
-    // A more robust ETag might involve hashing the content or using a dedicated library.
-    const etag = `"${new Date(product.updatedAt || product.createdAt).getTime()}-${product.__v}"`;
-    
+    const etag = `"${new Date(product.updatedAt || product.createdAt!).getTime()}-${(product as any).__v}"`;
     res.setHeader('ETag', etag);
-    res.setHeader('Last-Modified', (product.updatedAt || product.createdAt).toUTCString());
+    if (product.updatedAt || product.createdAt) {
+        res.setHeader('Last-Modified', (product.updatedAt || product.createdAt!).toUTCString());
+    }
 
-
-    // Check If-None-Match header
     if (req.headers['if-none-match'] === etag) {
-      return res.status(304).send(); // Not Modified
+      return res.status(304).send();
     }
     
     const productWithLinks = {
-      ...product.toObject(),
+      ...product,
       _links: {
         self: { href: `/api/products/${product._id}` },
         collection: { href: '/api/products' }
       }
     };
     res.status(200).json(productWithLinks);
-  } catch (error) {
+  } catch (error: any) {
+     if (error.status) { // Errors from service
+      return res.status(error.status).json({ message: error.message });
+    }
     next(error);
   }
 });
@@ -152,21 +124,15 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
 // Update an existing product by ID
 router.put('/:id', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({ message: 'Invalid product ID format.' });
-    }
     const productData: Partial<IProduct> = req.body;
-    const updatedProduct = await Product.findByIdAndUpdate(req.params.id, productData, { new: true, runValidators: true });
+    const updatedProduct = await ProductService.updateProduct(req.params.id, productData);
     if (!updatedProduct) {
       return res.status(404).json({ message: 'Product not found for update' });
     }
     res.status(200).json(updatedProduct);
-  } catch (error) {
-    if (error instanceof mongoose.Error.ValidationError) {
-      return res.status(400).json({ message: 'Validation Error', errors: error.errors });
-    }
-    if (error.code === 11000) { // MongoError: E11000 duplicate key error
-        return res.status(409).json({ message: 'Duplicate SKU or other unique field during update.', field: error.keyValue });
+  } catch (error: any) {
+    if (error.status) {
+      return res.status(error.status).json({ message: error.message, errors: error.errors, field: error.field });
     }
     next(error);
   }
@@ -175,15 +141,15 @@ router.put('/:id', authenticateToken, async (req: Request, res: Response, next: 
 // Delete a product by ID
 router.delete('/:id', authenticateToken, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-        return res.status(400).json({ message: 'Invalid product ID format.' });
-    }
-    const deletedProduct = await Product.findByIdAndDelete(req.params.id);
+    const deletedProduct = await ProductService.deleteProduct(req.params.id);
     if (!deletedProduct) {
       return res.status(404).json({ message: 'Product not found for deletion' });
     }
     res.status(200).json({ message: 'Product deleted successfully', product: deletedProduct });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.status) { // Errors from service
+      return res.status(error.status).json({ message: error.message });
+    }
     next(error);
   }
 });
