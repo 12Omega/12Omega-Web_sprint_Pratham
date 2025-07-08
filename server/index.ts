@@ -1,13 +1,23 @@
 import express from 'express';
-import userRoutes from './routes/userRoutes';
-import productRoutes from './routes/productRoutes';
+import dotenv from 'dotenv';
+import cors from 'cors';
+import authRoutes from './routes/auth';
+
+
+dotenv.config();
 
 const app = express();
+const PORT: number = parseInt(process.env.PORT || '5000', 10); // ✅ Only declare this ONCE
 
-// Use the routes
-app.use('/users', userRoutes);
-app.use('/products', productRoutes);
+app.use(cors());
+app.use(express.json());
+app.use('/api/auth', authRoutes);
 
-app.listen(3000, () => {
-  console.log('Server is running on port 3000');
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server is running on http://localhost:${PORT}`);
 });
+
+
+
+
+

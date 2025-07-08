@@ -2,6 +2,8 @@ import jwt, { JwtPayload } from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
 import { User } from '../models/User';
 import express from 'express';
+import authRoutes from '../src/routes/auth'; // or whatever the actual relative path is
+
 
 interface AuthenticatedRequest extends Request {
   user?: any;
