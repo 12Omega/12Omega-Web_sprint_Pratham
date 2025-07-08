@@ -1,10 +1,9 @@
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
-import { User } from '../models/User';
-import express from 'express';
+import { User, IUser } from '../models/User'; // Assuming IUser is the correct interface for the user object
 
 interface AuthenticatedRequest extends Request {
-  user?: any;
+  user?: IUser | any; // Use IUser if it fits, otherwise any for flexibility
 }
 
 
