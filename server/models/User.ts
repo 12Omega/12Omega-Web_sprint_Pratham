@@ -12,6 +12,9 @@ export interface IUser extends Document {
   lastLoginAt?: Date;
   createdAt?: Date;
   updatedAt?: Date;
+
+  // Method to compare password
+  comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
 const UserSchema: Schema<IUser> = new Schema({

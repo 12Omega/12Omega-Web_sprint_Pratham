@@ -1,12 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 // import axios, { isAxiosError } from 'axios'; // Axios used via apiClient
-import { loginUser, getMe, setAuthToken, AuthResponse } from '../services/api'; // Import from our API service
-import { IUser } from '../models/User'; // Still using this for the base, but ensure it's frontend-friendly or use a dedicated FrontendUser type
+import { loginUser, getMe, setAuthToken, AuthResponse, FrontendUser } from '../services/api'; // Import from our API service
 
-// Frontend representation of User (ensure this matches what getMe and loginUser provide)
-// This should ideally be a dedicated frontend type. For now, Omit from backend IUser.
-type FrontendUser = Omit<IUser, 'password' | 'comparePassword' | 'save' | 'isModified'> & { _id: string };
-
+// FrontendUser is now imported from api.ts
 
 interface AuthContextType {
   user: FrontendUser | null;

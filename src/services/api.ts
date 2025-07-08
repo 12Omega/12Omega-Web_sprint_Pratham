@@ -1,6 +1,6 @@
 import axios from 'axios';
-import { IUser } from '../models/User'; // Assuming server models can be referenced or duplicated for frontend types
-import { IProduct } from '../models/Product'; // Same assumption
+import { IUser } from '../types/user'; // Changed path to frontend types
+import { IProduct } from '../types/product'; // Changed path to frontend types
 
 // --- Axios Instance Setup ---
 const apiClient = axios.create({
@@ -29,9 +29,9 @@ interface LoginCredentials {
 // Frontend User type, should omit password and align with what /me and login returns
 // This IUser is imported from backend models, which isn't ideal.
 // For now, we'll use Omit, but a dedicated frontend type is better.
-type FrontendUser = Omit<IUser, 'password'> & { _id: string }; // Ensure _id is string
+export type FrontendUser = Omit<IUser, 'password'> & { _id: string }; // Ensure _id is string
 
-interface AuthResponse {
+export interface AuthResponse {
   token: string;
   user: FrontendUser; // Backend login now returns a user object
 }
