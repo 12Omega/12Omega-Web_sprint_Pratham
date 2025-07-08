@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { IUser } from '../types/user'; // Changed path to frontend types
-import { IProduct } from '../types/product'; // Changed path to frontend types
+import { IProduct } from '../types/product.ts'; // Changed path to frontend types, added .ts extension
 
 // --- Axios Instance Setup ---
 const apiClient = axios.create({

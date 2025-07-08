@@ -32,7 +32,7 @@ router.post('/register', async (req: Request<{}, {}, RegisterRequestBody>, res: 
     await newUser.save();
     
     // Exclude password from the response
-    const { password, ...userResponse } = newUser.toObject();
+    const { password: _removedPassword, ...userResponse } = newUser.toObject();
 
     res.status(201).json({ message: 'User created successfully', user: userResponse });
   } catch (error: any) {
