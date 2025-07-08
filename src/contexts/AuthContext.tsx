@@ -1,20 +1,19 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import axios, { isAxiosError } from 'axios';
+// import axios, { isAxiosError } from 'axios'; // Axios used via apiClient
+import { loginUser, getMe, setAuthToken, AuthResponse } from '../services/api'; // Import from our API service
+import { IUser } from '../models/User'; // Still using this for the base, but ensure it's frontend-friendly or use a dedicated FrontendUser type
 
-interface User {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  role: string;
-  avatar?: string;
-}
+// Frontend representation of User (ensure this matches what getMe and loginUser provide)
+// This should ideally be a dedicated frontend type. For now, Omit from backend IUser.
+type FrontendUser = Omit<IUser, 'password' | 'comparePassword' | 'save' | 'isModified'> & { _id: string };
+
 
 interface AuthContextType {
-  user: User | null;
-  login: (email: string, password: string) => Promise<void>;
+  user: FrontendUser | null;
+  login: (username: string, password: string) => Promise<void>; // Changed email to username
   logout: () => void;
   loading: boolean;
+  token: string | null; // Added token to context if needed by other parts of app directly
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,61 +31,58 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<FrontendUser | null>(null);
+  const [token, setLocalToken] = useState<string | null>(localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      checkAuth();
-    } else {
-      setLoading(false);
-    }
-  }, []);
-
-  const checkAuth = async () => {
-    try {
-      const response = await axios.get('http://localhost:5000/api/auth/me');
-      setUser(response.data.user);
-    } catch (_error) { // error variable is not used, prefixed with underscore
-      localStorage.removeItem('token');
-      delete axios.defaults.headers.common['Authorization'];
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const login = async (email: string, password: string) => {
-    try {
-      const response = await axios.post('http://localhost:5000/api/auth/login', {
-        email,
-        password,
-      });
-
-      const { token, user } = response.data;
-      localStorage.setItem('token', token);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      setUser(user);
-    } catch (err) {
-      let errorMessage = 'Login failed';
-      if (isAxiosError(err) && err.response?.data?.message && typeof err.response.data.message === 'string') {
-        errorMessage = err.response.data.message;
-      } else if (err instanceof Error) {
-        errorMessage = err.message;
+    const checkAuth = async () => {
+      const storedToken = localStorage.getItem('token');
+      if (storedToken) {
+        setAuthToken(storedToken); // Set token for apiClient
+        try {
+          const response = await getMe(); // Use getMe from api.ts
+          setUser(response.user as FrontendUser); // Cast to FrontendUser
+        } catch (error) {
+          console.error("Failed to fetch user with stored token", error);
+          localStorage.removeItem('token');
+          setAuthToken(null);
+          setUser(null);
+        }
       }
-      throw new Error(errorMessage);
+      setLoading(false);
+    };
+    checkAuth();
+  }, []); // Run once on mount
+
+  const login = async (username: string, password: string) => { // Changed email to username
+    try {
+      setLoading(true);
+      const response: AuthResponse = await loginUser({ username, password }); // Use loginUser from api.ts
+      
+      localStorage.setItem('token', response.token);
+      setAuthToken(response.token); // Set token for future apiClient requests
+      setLocalToken(response.token);
+      setUser(response.user as FrontendUser); // Cast to FrontendUser
+      setLoading(false);
+    } catch (err: any) {
+      setLoading(false);
+      // Error handling is now more centralized in api.ts or component, but can re-throw or set local error state
+      throw err; // Re-throw to be caught by LoginPage
     }
   };
 
   const logout = () => {
     localStorage.removeItem('token');
-    delete axios.defaults.headers.common['Authorization'];
+    setAuthToken(null); // Clear token in apiClient
+    setLocalToken(null);
     setUser(null);
+    // Optionally, redirect here or let calling component handle it
+    // navigate('/login'); // If navigate is available here
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, token, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

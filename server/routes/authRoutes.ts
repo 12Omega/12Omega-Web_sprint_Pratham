@@ -88,11 +88,42 @@ router.post('/login', async (req: Request<{}, {}, LoginRequestBody>, res: Respon
     user.lastLoginAt = new Date();
     await user.save({ timestamps: false }); // Avoid updating updatedAt just for lastLoginAt
 
-    res.status(200).json({ token, userId: user._id, username: user.username, role: user.role });
+    // Prepare user object for response, excluding password
+    const userResponse = {
+      _id: user._id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      isActive: user.isActive,
+      lastLoginAt: user.lastLoginAt,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+
+    res.status(200).json({ token, user: userResponse }); // Return more complete user object
   } catch (error: any) {
     console.error('Login error:', error.message);
     res.status(500).json({ message: 'Error logging in. Please try again later.' });
   }
+});
+
+// Get current authenticated user
+import { authenticateToken } from '../middleware/auth'; // Assuming AuthenticatedRequest is also defined/exported there or define it here
+import { Request as ExpressRequest } from 'express';
+
+interface AuthenticatedRequest extends ExpressRequest {
+  user?: IUser; // Make sure IUser is imported or defined appropriately
+}
+
+router.get('/me', authenticateToken, (req: AuthenticatedRequest, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Not authenticated' });
+  }
+  // Exclude password from the response
+  const { password, ...userWithoutPassword } = req.user.toObject ? req.user.toObject() : { ...req.user };
+  res.status(200).json({ user: userWithoutPassword });
 });
 
 export default router;

@@ -1,37 +1,60 @@
 import React from 'react';
-import { Car, CheckCircle, Calendar, DollarSign, TrendingUp } from 'lucide-react';
+import { Users, Wifi, Activity, TrendingUp, TrendingDown, Minus } from 'lucide-react'; // Adjusted icons
 
-const StatsCards: React.FC = () => {
+interface StatsCardsProps {
+  totalUsers?: number;
+  activeSessionsToday?: number;
+  recentUsersChange?: string; // This is a string like "+2.50" or "-1.00"
+  // Add more props as needed for other stats if the API provides them
+}
+
+const StatsCards: React.FC<StatsCardsProps> = ({
+  totalUsers = 0,
+  activeSessionsToday = 0,
+  recentUsersChange = "0.00",
+}) => {
+
+  const parseChange = (changeStr: string) => {
+    const value = parseFloat(changeStr);
+    if (value > 0) return { type: 'positive', value: `+${changeStr}` };
+    if (value < 0) return { type: 'negative', value: changeStr };
+    return { type: 'neutral', value: changeStr };
+  };
+
+  const recentUsersStat = parseChange(recentUsersChange);
+
   const stats = [
     {
-      title: 'Total Slots',
-      value: '24',
-      change: '+2 from last month',
-      changeType: 'positive',
-      icon: Car,
+      title: 'Total Users',
+      value: totalUsers.toLocaleString(),
+      // change: '+2 from last month', // Example, if you have this data
+      // changeType: 'positive',
+      icon: Users,
       color: 'blue'
     },
     {
-      title: 'Available Now',
-      value: '8',
-      subtitle: 'Available',
-      icon: CheckCircle,
+      title: 'Active Sessions',
+      value: activeSessionsToday.toLocaleString(),
+      // subtitle: 'Currently Active',
+      icon: Wifi,
       color: 'green'
     },
     {
-      title: 'Booked Today',
-      value: '14',
-      subtitle: 'Booked • Reserved',
-      icon: Calendar,
-      color: 'red'
+      title: 'User Change (Recent)',
+      value: recentUsersStat.value, // Shows the string like "+2.50"
+      // subtitle: 'Compared to previous period',
+      changeType: recentUsersStat.type,
+      icon: recentUsersStat.type === 'positive' ? TrendingUp : recentUsersStat.type === 'negative' ? TrendingDown : Activity,
+      color: recentUsersStat.type === 'positive' ? 'green' : recentUsersStat.type === 'negative' ? 'red' : 'yellow'
     },
+    // Placeholder for a fourth card or can be removed
     {
-      title: "Today's Earnings",
-      value: '$245.50',
-      change: '+15% from yesterday',
-      changeType: 'positive',
-      icon: DollarSign,
-      color: 'yellow'
+      title: "Today's Metric", // Example, replace with actual data
+      value: 'N/A',
+      // change: '+0% from yesterday',
+      // changeType: 'neutral',
+      icon: Minus, // Placeholder icon
+      color: 'gray'
     }
   ];
 

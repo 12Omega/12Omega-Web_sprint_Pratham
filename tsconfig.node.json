@@ -16,7 +16,12 @@
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    "baseUrl": ".", // Set base URL to project root
+    "paths": {      // Optional: define paths if needed for deeper aliasing
+      "@server/*": ["server/*"]
+    }
   },
-  "include": ["vite.config.ts"]
+  "include": ["vite.config.ts", "server/**/*.ts"], // Include server files
+  "exclude": ["node_modules", "dist", "server/dist"] // Exclude server's own dist
 }

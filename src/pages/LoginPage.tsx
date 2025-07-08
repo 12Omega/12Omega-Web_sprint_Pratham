@@ -1,29 +1,59 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Car, Eye, EyeOff, Mail, Lock } from 'lucide-react';
+import { Link, useNavigate, useLocation } from 'react-router-dom'; // Added useLocation
+import { Car, Eye, EyeOff, Mail, Lock, User as UserIcon } from 'lucide-react'; // Added UserIcon
+import { useAuth } from '../contexts/AuthContext'; // Added useAuth
 
 const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false); // Added loading state
+  const [error, setError] = useState(''); // Added error state
+  const { login } = useAuth(); // Get login function from context
+  const navigate = useNavigate();
+  const location = useLocation(); // Get location for redirect state
+
   const [formData, setFormData] = useState({
-    email: '',
+    username: '', // Changed from email to username
     password: '',
     rememberMe: false
   });
   const [isShaking, setIsShaking] = useState(false);
-  const navigate = useNavigate();
+  // const navigate = useNavigate(); // Already defined
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => { // Made async
     e.preventDefault();
     
-    if (!formData.email || !formData.password) {
+    if (!formData.username || !formData.password) { // Changed from email to username
       setIsShaking(true);
       setTimeout(() => setIsShaking(false), 500);
       return;
     }
 
     // Simulate login
-    console.log('Login attempt:', formData);
-    navigate('/dashboard');
+    // Simulate login
+    // console.log('Login attempt:', formData);
+    // navigate('/dashboard');
+    setLoading(true);
+    setError('');
+    try {
+      await login(formData.username, formData.password); // Changed from email to username
+      // Navigate to intended page or dashboard after successful login
+      const from = location.state?.from?.pathname || '/dashboard';
+      navigate(from, { replace: true });
+    } catch (err) {
+      let errorMessage = 'Failed to log in. Please check your credentials.';
+       if (typeof err === 'object' && err !== null && 'message' in err && typeof (err as {message: unknown}).message === 'string') {
+        errorMessage = (err as {message: string}).message;
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      } else if (typeof err === 'string') {
+        errorMessage = err;
+      }
+      setError(errorMessage);
+      setIsShaking(true);
+      setTimeout(() => setIsShaking(false), 500);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -52,25 +82,25 @@ const LoginPage: React.FC = () => {
         </div>
         
         <div className="bg-white/10 backdrop-blur-lg py-8 px-6 shadow-2xl rounded-2xl border border-white/20">
-          <form className={`space-y-6 ${isShaking ? 'animate-pulse' : ''}`} onSubmit={handleSubmit}>
+          <form className={`space-y-6 ${isShaking ? 'animate-shake' : ''}`} onSubmit={handleSubmit}> {/* Changed animate-pulse to animate-shake for better visual cue */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-white mb-2">
-                Email Address
+              <label htmlFor="username" className="block text-sm font-medium text-white mb-2">
+                Username
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-blue-300" />
+                  <UserIcon className="h-5 w-5 text-blue-300" /> {/* Changed icon */}
                 </div>
                 <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
+                  id="username"
+                  name="username" // Changed name
+                  type="text" // Changed type
+                  autoComplete="username" // Changed autoComplete
                   required
-                  value={formData.email}
+                  value={formData.username} // Changed value
                   onChange={handleInputChange}
                   className="pl-10 block w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
-                  placeholder="Enter your email"
+                  placeholder="Enter your username" // Changed placeholder
                 />
               </div>
             </div>
@@ -129,11 +159,15 @@ const LoginPage: React.FC = () => {
 
             <button
               type="submit"
-              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-lg text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-200 transform hover:scale-105"
+              disabled={loading}
+              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-lg text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-200 transform hover:scale-105 disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              Sign In
+              {loading ? 'Signing In...' : 'Sign In'}
             </button>
           </form>
+           {error && ( // Display error message below the form
+            <p className="mt-4 text-center text-sm text-red-400 bg-red-900 bg-opacity-50 p-3 rounded-md">{error}</p>
+          )}
           
           <div className="mt-6">
             <div className="relative">
