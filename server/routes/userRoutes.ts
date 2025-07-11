@@ -90,7 +90,7 @@ router.get('/', authenticateToken, isAdmin, async (req: AuthenticatedRequest, re
 router.get('/:id', authenticateToken, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     // Permission check: Admin or the user themselves
-    if (req.user?.role !== 'admin' && req.user?._id.toString() !== req.params.id) {
+    if (req.user?.role !== 'admin' && String(req.user?._id) !== req.params.id) {
         return res.status(403).json({ message: 'Forbidden: You can only access your own profile or you need admin rights.' });
     }
 
