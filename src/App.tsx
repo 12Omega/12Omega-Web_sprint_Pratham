@@ -3,7 +3,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage'; // Renamed Login component to LoginPage for clarity
-import DashboardPage from './pages/DashboardPage'; // Assuming Dashboard component is now a page
+import DashboardPage from './pages/Dashboard'; // Corrected import path
 import UserManagementPage from './pages/UserManagementPage'; // Assuming UserManagement is a page
 import ProductManagementPage from './pages/ProductManagementPage'; // Assuming ProductManagement is a page
 
@@ -13,10 +13,31 @@ const SettingsPage: React.FC = () => <div className="text-center py-12"><p>Setti
 const NotFoundPage: React.FC = () => <div className="text-center py-12"><p>404 - Page Not Found</p></div>;
 
 
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
+
 // ProtectedRoute component
 const ProtectedRoute: React.FC = () => {
   const { user, loading } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate(); // Hook for navigation
+
+  // Determine currentPage from location.pathname
+  // This is a simple example; you might need more robust logic
+  // if your paths don't directly map to navigation item IDs.
+  const getCurrentPage = (pathname: string): string => {
+    if (pathname.startsWith('/dashboard')) return 'dashboard';
+    if (pathname.startsWith('/users')) return 'users';
+    if (pathname.startsWith('/products')) return 'products';
+    if (pathname.startsWith('/analytics')) return 'analytics';
+    if (pathname.startsWith('/settings')) return 'settings';
+    return 'dashboard'; // Default or derive more intelligently
+  };
+
+  const currentPage = getCurrentPage(location.pathname);
+
+  const handlePageChange = (pageId: string) => {
+    navigate(`/${pageId}`);
+  };
 
   if (loading) {
     return (
@@ -34,7 +55,7 @@ const ProtectedRoute: React.FC = () => {
   }
 
   return (
-    <Layout> {/* Layout now wraps Outlet for protected routes */}
+    <Layout currentPage={currentPage} onPageChange={handlePageChange}> {/* Layout now wraps Outlet for protected routes */}
       <Outlet /> {/* Child routes will render here */}
     </Layout>
   );
