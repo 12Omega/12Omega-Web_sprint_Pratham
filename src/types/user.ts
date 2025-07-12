@@ -4,13 +4,14 @@ export interface IUser {
   _id: any; // Or string, depending on Mongoose version/typings
   username: string;
   email: string;
-  role: 'user' | 'admin';
+  role: 'user' | 'admin' | 'moderator';
   isActive: boolean;
   firstName?: string;
   lastName?: string;
   lastLoginAt?: Date;
   createdAt?: Date; // If needed on frontend
   updatedAt?: Date; // If needed on frontend
-  // Add any other fields that are part of the user object sent to the frontend,
-  // but EXCLUDE password or methods like comparePassword, save, etc.
+  status?: 'active' | 'inactive' | 'suspended';
+  phone?: string;
+  password?: string;
 }

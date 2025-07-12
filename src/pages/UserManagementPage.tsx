@@ -2,50 +2,75 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Users, Plus, Search, Edit, Trash2 } from 'lucide-react';
 import { getUsers, createUser, updateUser, deleteUser } from '../services/api';
 import AddUserModal from '../components/AddUserModal';
-
-// This type should align with what the API returns for a user
-interface User {
-  _id: string;
-  username: string;
-  email: string;
-  role: 'user' | 'admin';
-  createdAt: string;
-  lastLoginAt?: string;
-  isActive: boolean;
-}
+import { IUser } from '../types/user';
 
 const UserManagement: React.FC = () => {
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<IUser[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<IUser | null>(null);
+  const [formData, setFormData] = useState<IUser>({
+    _id: '',
+    username: '',
+    email: '',
+    role: 'user',
+    isActive: true,
+    firstName: '',
+    lastName: '',
+    password: '',
+    phone: '',
+    status: 'active',
+  });
 
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
-      setError(null);
       const params = {
         search: searchTerm,
         role: roleFilter,
+        status: statusFilter,
       };
       const response = await getUsers(params);
       setUsers(response.data);
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch users.');
       console.error('Error fetching users:', err);
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, roleFilter]);
+  }, [searchTerm, roleFilter, statusFilter]);
 
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
 
-  const handleUserAdded = () => {
-    fetchUsers(); // Refetch users after one is added
+  const resetForm = () => {
+    setFormData({
+      _id: '',
+      username: '',
+      email: '',
+      role: 'user',
+      isActive: true,
+      firstName: '',
+      lastName: '',
+      password: '',
+      phone: '',
+      status: 'active',
+    });
+  };
+
+  const openCreateModal = () => {
+    setEditingUser(null);
+    resetForm();
+    setShowModal(true);
+  };
+
+  const openEditModal = (user: IUser) => {
+    setEditingUser(user);
+    setFormData(user);
+    setShowModal(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -54,23 +79,24 @@ const UserManagement: React.FC = () => {
         await deleteUser(id);
         fetchUsers(); // Refetch users after deletion
       } catch (err: any) {
-        setError(err.message || 'Failed to delete user.');
         console.error('Error deleting user:', err);
       }
     }
   };
 
-  // Placeholder for edit functionality
-  const handleEdit = (user: User) => {
-    // For now, we'll just log it. A real implementation would open a modal.
-    console.log('Editing user:', user);
-    alert('Edit functionality is not yet implemented.');
-  };
-
-  const openCreateModal = () => {
-    setEditingUser(null);
-    resetForm();
-    setShowModal(true);
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    try {
+      if (editingUser) {
+        await updateUser(editingUser._id, formData);
+      } else {
+        await createUser(formData);
+      }
+      fetchUsers();
+      setShowModal(false);
+    } catch (err: any) {
+      console.error('Error saving user:', err);
+    }
   };
 
   if (loading) {
@@ -142,6 +168,7 @@ const UserManagement: React.FC = () => {
       {/* Users Table */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
+.
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
@@ -171,6 +198,7 @@ const UserManagement: React.FC = () => {
                         {user.firstName} {user.lastName}
                       </div>
                       <div className="text-sm text-gray-500">{user.email}</div>
+.
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -192,7 +220,7 @@ const UserManagement: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(user.createdAt).toLocaleDateString()}
+                    {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">
@@ -218,125 +246,14 @@ const UserManagement: React.FC = () => {
       </div>
 
       {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">
-              {editingUser ? 'Edit User' : 'Add New User'}
-            </h3>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    First Name
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.firstName}
-                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Last Name
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.lastName}
-                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                />
-              </div>
-              {!editingUser && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Password
-                  </label>
-                  <input
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
-                </div>
-              )}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Phone
-                </label>
-                <input
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Role
-                  </label>
-                  <select
-                    value={formData.role}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="user">User</option>
-                    <option value="moderator">Moderator</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Status
-                  </label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="suspended">Suspended</option>
-                  </select>
-                </div>
-              </div>
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  {editingUser ? 'Update' : 'Create'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <AddUserModal
+        showModal={showModal}
+        editingUser={editingUser}
+        formData={formData}
+        setFormData={setFormData}
+        handleSubmit={handleSubmit}
+        setShowModal={setShowModal}
+      />
     </div>
   );
 };
