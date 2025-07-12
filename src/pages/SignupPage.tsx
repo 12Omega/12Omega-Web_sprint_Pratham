@@ -1,51 +1,46 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Car, Eye, EyeOff, Mail, Phone, Lock, ArrowRight } from 'lucide-react';
+import { Car, Eye, EyeOff, Mail, Lock, ArrowRight, User } from 'lucide-react';
+import { registerUser } from '../services/api';
 
 const SignupPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
     email: '',
-    phone: '',
     password: '',
-    terms: false
+    terms: false,
   });
-  const [isShaking, setIsShaking] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.email || !formData.phone || !formData.password || !formData.terms || !formData.username) {
-      setIsShaking(true);
-      setTimeout(() => setIsShaking(false), 500);
+    if (!formData.username || !formData.email || !formData.password || !formData.terms) {
+      setError('Please fill in all required fields.');
       return;
     }
-
-    // Validation
-    const phoneRegex = /^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/;
-    if (!phoneRegex.test(formData.phone)) {
-      alert('Please enter a valid phone number');
-      return;
+    
+    if (formData.password.length < 6) {
+        setError('Password must be at least 6 characters long.');
+        return;
     }
+    
+    setError('');
+    setLoading(true);
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      alert('Please enter a valid email address');
-      return;
+    try {
+      const { terms, ...apiData } = formData; // Exclude 'terms' from data sent to API
+      await registerUser(apiData);
+      alert('Account created successfully! Please log in.');
+      navigate('/login');
+    } catch (err: any) {
+      setError(err.message || 'Failed to create an account. Please try again.');
+    } finally {
+      setLoading(false);
     }
-
-    if (formData.password.length < 8) {
-      alert('Password must be at least 8 characters');
-      return;
-    }
-
-    console.log('Signup attempt:', formData);
-    // Here you would typically call your API
-    // For now, we just simulate success
-    alert('Account created successfully! Redirecting to login page...');
-    navigate('/login');
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -54,17 +49,6 @@ const SignupPage: React.FC = () => {
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
-  };
-
-  const formatPhoneNumber = (value: string) => {
-    const x = value.replace(/\D/g, '').match(/(\d{0,3})(\d{0,3})(\d{0,4})/);
-    if (!x) return '';
-    return !x[2] ? x[1] : '(' + x[1] + ') ' + x[2] + (x[3] ? '-' + x[3] : '');
-  };
-
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatPhoneNumber(e.target.value);
-    setFormData(prev => ({ ...prev, phone: formatted }));
   };
 
   return (
@@ -79,13 +63,15 @@ const SignupPage: React.FC = () => {
         </div>
         
         <div className="bg-white rounded-b-2xl shadow-2xl p-8">
-          <form className={`space-y-6 ${isShaking ? 'animate-pulse' : ''}`} onSubmit={handleSubmit}>
+          <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
                 Username
               </label>
               <div className="relative">
-                {/* You can add a User icon here if you like */}
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <User className="h-5 w-5 text-gray-400" />
+                </div>
                 <input
                   type="text"
                   id="username"
@@ -93,7 +79,7 @@ const SignupPage: React.FC = () => {
                   required
                   value={formData.username}
                   onChange={handleInputChange}
-                  className="pl-4 block w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition duration-200"
+                  className="pl-10 block w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition duration-200"
                   placeholder="Choose a username"
                 />
               </div>
@@ -121,27 +107,6 @@ const SignupPage: React.FC = () => {
             </div>
             
             <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
-                Phone Number
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Phone className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  type="tel"
-                  id="phone"
-                  name="phone"
-                  required
-                  value={formData.phone}
-                  onChange={handlePhoneChange}
-                  className="pl-10 block w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition duration-200"
-                  placeholder="(123) 456-7890"
-                />
-              </div>
-            </div>
-            
-            <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
                 Password
               </label>
@@ -154,7 +119,7 @@ const SignupPage: React.FC = () => {
                   id="password"
                   name="password"
                   required
-                  minLength={8}
+                  minLength={6}
                   value={formData.password}
                   onChange={handleInputChange}
                   className="pl-10 pr-10 block w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition duration-200"
@@ -168,7 +133,7 @@ const SignupPage: React.FC = () => {
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
-              <p className="mt-1 text-xs text-gray-500">Must be at least 8 characters</p>
+              <p className="mt-1 text-xs text-gray-500">Must be at least 6 characters</p>
             </div>
             
             <div className="flex items-start">
@@ -185,20 +150,23 @@ const SignupPage: React.FC = () => {
                 I agree to the{' '}
                 <Link to="#" className="text-blue-600 hover:underline font-medium">
                   Terms of Service
-                </Link>{' '}
-                and{' '}
-                <Link to="#" className="text-blue-600 hover:underline font-medium">
-                  Privacy Policy
                 </Link>
               </label>
             </div>
             
+            {error && (
+                <div className="rounded-md bg-red-100 p-3">
+                    <p className="text-sm text-red-700">{error}</p>
+                </div>
+            )}
+
             <button
               type="submit"
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-4 rounded-xl font-medium hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200 flex items-center justify-center group transform hover:scale-105"
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-4 rounded-xl font-medium hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200 flex items-center justify-center group transform hover:scale-105 disabled:opacity-50"
             >
-              <span>Create Account</span>
-              <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+              {loading ? <span>Creating Account...</span> : <span>Create Account</span>}
+              {!loading && <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />}
             </button>
           </form>
           
