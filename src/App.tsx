@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage'; // Renamed Login component to LoginPage for clarity
+import SignupPage from './pages/SignupPage'; // Import the SignupPage
 import DashboardPage from './pages/Dashboard'; // Corrected import path
 import UserManagementPage from './pages/UserManagementPage'; // Assuming UserManagement is a page
 import ProductManagementPage from './pages/ProductManagementPage'; // Assuming ProductManagement is a page
@@ -66,6 +67,7 @@ const AppContent: React.FC = () => {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/signup" element={<SignupPage />} />
       
       {/* Protected Routes */}
       <Route element={<ProtectedRoute />}>

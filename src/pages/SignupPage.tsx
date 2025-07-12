@@ -5,6 +5,7 @@ import { Car, Eye, EyeOff, Mail, Phone, Lock, ArrowRight } from 'lucide-react';
 const SignupPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
+    username: '',
     email: '',
     phone: '',
     password: '',
@@ -16,7 +17,7 @@ const SignupPage: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.email || !formData.phone || !formData.password || !formData.terms) {
+    if (!formData.email || !formData.phone || !formData.password || !formData.terms || !formData.username) {
       setIsShaking(true);
       setTimeout(() => setIsShaking(false), 500);
       return;
@@ -41,8 +42,10 @@ const SignupPage: React.FC = () => {
     }
 
     console.log('Signup attempt:', formData);
-    alert('Account created successfully! Redirecting to dashboard...');
-    navigate('/dashboard');
+    // Here you would typically call your API
+    // For now, we just simulate success
+    alert('Account created successfully! Redirecting to login page...');
+    navigate('/login');
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -55,7 +58,8 @@ const SignupPage: React.FC = () => {
 
   const formatPhoneNumber = (value: string) => {
     const x = value.replace(/\D/g, '').match(/(\d{0,3})(\d{0,3})(\d{0,4})/);
-    return !x![2] ? x![1] : '(' + x![1] + ') ' + x![2] + (x![3] ? '-' + x![3] : '');
+    if (!x) return '';
+    return !x[2] ? x[1] : '(' + x[1] + ') ' + x[2] + (x[3] ? '-' + x[3] : '');
   };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -76,6 +80,25 @@ const SignupPage: React.FC = () => {
         
         <div className="bg-white rounded-b-2xl shadow-2xl p-8">
           <form className={`space-y-6 ${isShaking ? 'animate-pulse' : ''}`} onSubmit={handleSubmit}>
+            <div>
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
+                Username
+              </label>
+              <div className="relative">
+                {/* You can add a User icon here if you like */}
+                <input
+                  type="text"
+                  id="username"
+                  name="username"
+                  required
+                  value={formData.username}
+                  onChange={handleInputChange}
+                  className="pl-4 block w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition duration-200"
+                  placeholder="Choose a username"
+                />
+              </div>
+            </div>
+
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                 Email Address
@@ -113,7 +136,7 @@ const SignupPage: React.FC = () => {
                   value={formData.phone}
                   onChange={handlePhoneChange}
                   className="pl-10 block w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition duration-200"
-                  placeholder="+1 (123) 456-7890"
+                  placeholder="(123) 456-7890"
                 />
               </div>
             </div>
