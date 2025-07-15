@@ -10,7 +10,7 @@ import { getDashboardData, DashboardData } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
 const DashboardPage: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [dashboardData, setDashboardData] = React.useState<DashboardData | null>(null);
   const [loading, setLoading] = React.useState<boolean>(true);
