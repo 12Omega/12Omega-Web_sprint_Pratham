@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartPark Admin | Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .sidebar {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 4px 0 15px rgba(0, 0, 0, 0.05);
+        }
+        
+        .sidebar.collapsed {
+            width: 80px;
+        }
+        
+        .sidebar.collapsed .nav-text {
+            opacity: 0;
+            width: 0;
+            height: 0;
+            overflow: hidden;
+        }
+        
+        .main-content {
+            transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+        
+        .slot-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        
+        .slot-available {
+            background-color: #10B981;
+        }
+        
+        .slot-booked {
+            background-color: #EF4444;
+        }
+        
+        .slot-maintenance {
+            background-color: #F59E0B;
+        }
+        
+        .slot-reserved {
+            background-color: #3B82F6;
+        }
+        
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background-color: #EF4444;
+            color: white;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .dropdown-menu {
+            transform-origin: top right;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+        
+        .modal-content {
+            transform: translateY(0);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .modal-content.entering {
+            transform: translateY(-20px);
+            opacity: 0;
+        }
+        
+        .modal-content.entered {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        
+        .modal-content.exiting {
+            transform: translateY(-20px);
+            opacity: 0;
+        }
+        
+        .parking-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 16px;
+        }
+        
+        .parking-slot {
+            transition: all 0.2s ease;
+        }
+        
+        .parking-slot:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .pagination-btn.active {
+            background-color: #6366F1;
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+    <!-- Firebase Configuration -->
+    <script>
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+        firebase.initializeApp(firebaseConfig);
+    </script>
+
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <div class="sidebar bg-indigo-800 text-white w-64 flex-shrink-0 flex flex-col">
+            <div class="p-4 flex items-center justify-between border-b border-indigo-700">
+                <div class="flex items-center">
+                    <i class="fas fa-parking text-2xl mr-3 text-indigo-300"></i>
+                    <span class="text-xl font-bold">SmartPark</span>
+                </div>
+                <button id="toggleSidebar" class="text-white focus:outline-none hover:bg-indigo-700 p-1 rounded-md">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+            <div class="p-4 border-b border-indigo-700 flex items-center">
+                <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="User" class="w-10 h-10 rounded-full mr-3 border-2 border-indigo-300">
+                <div class="flex-1 min-w-0">
+                    <div class="font-medium truncate">John Doe</div>
+                    <div class="text-xs text-indigo-300 truncate">Parking Owner</div>
+                </div>
+                <button id="userMenuButton" class="text-indigo-300 hover:text-white focus:outline-none">
+                    <i class="fas fa-chevron-down text-sm"></i>
+                </button>
+            </div>
+            <nav class="mt-4 flex-1 overflow-y-auto">
+                <div>
+                    <a href="#" class="flex items-center py-3 px-4 bg-indigo-900 text-white">
+                        <i class="fas fa-tachometer-alt mr-3 text-indigo-300"></i>
+                        <span class="nav-text">Dashboard</span>
+                    </a>
+                    <a href="#" class="flex items-center py-3 px-4 hover:bg-indigo-700 text-white">
+                        <i class="fas fa-map-marker-alt mr-3 text-indigo-300"></i>
+                        <span class="nav-text">Parking Slots</span>
+                    </a>
+                    <a href="#" class="flex items-center py-3 px-4 hover:bg-indigo-700 text-white">
+                        <i class="fas fa-calendar-check mr-3 text-indigo-300"></i>
+                        <span class="nav-text">Bookings</span>
+                        <span class="ml-auto bg-red-500 text-white text-xs px-2 py-1 rounded-full">3</span>
+                    </a>
+                    <a href="#" class="flex items-center py-3 px-4 hover:bg-indigo-700 text-white">
+                        <i class="fas fa-chart-line mr-3 text-indigo-300"></i>
+                        <span class="nav-text">Earnings</span>
+                    </a>
+                    <a href="#" class="flex items-center py-3 px-4 hover:bg-indigo-700 text-white">
+                        <i class="fas fa-users mr-3 text-indigo-300"></i>
+                        <span class="nav-text">Customers</span>
+                    </a>
+                    <a href="#" class="flex items-center py-3 px-4 hover:bg-indigo-700 text-white">
+                        <i class="fas fa-cog mr-3 text-indigo-300"></i>
+                        <span class="nav-text">Settings</span>
+                    </a>
+                </div>
+                
+                <div class="mt-auto p-4 border-t border-indigo-700">
+                    <div class="flex items-center justify-between text-indigo-300 text-sm">
+                        <span>System Status</span>
+                        <span class="h-2 w-2 bg-green-500 rounded-full"></span>
+                    </div>
+                    <div class="mt-2 text-xs text-indigo-400">
+                        Last updated: Just now
+                    </div>
+                </div>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content flex-1 overflow-auto">
+            <!-- Top Navigation -->
+            <header class="bg-white shadow-sm">
+                <div class="flex justify-between items-center p-4">
+                    <div class="flex items-center">
+                        <h1 class="text-2xl font-bold text-gray-800">Dashboard Overview</h1>
+                        <div class="ml-4 text-sm text-gray-500 hidden md:block">
+                            <i class="fas fa-calendar-alt mr-1"></i>
+                            <span id="currentDate">Monday, June 5, 2023</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="relative">
+                            <button id="notificationButton" class="text-gray-600 hover:text-gray-900 focus:outline-none relative">
+                                <i class="fas fa-bell text-xl"></i>
+                                <span class="notification-badge">3</span>
+                            </button>
+                            <div id="notificationDropdown" class="hidden absolute right-0 mt-2 w-72 bg-white rounded-md shadow-lg z-10 dropdown-menu">
+                                <div class="p-4 border-b">
+                                    <h3 class="font-medium">Notifications</h3>
+                                </div>
+                                <div class="max-h-60 overflow-y-auto">
+                                    <a href="#" class="block px-4 py-3 hover:bg-gray-50 border-b">
+                                        <div class="flex items-start">
+                                            <div class="p-2 bg-indigo-100 rounded-full mr-3">
+                                                <i class="fas fa-car text-indigo-600"></i>
+                                            </div>
+                                            <div>
+                                                <p class="font-medium text-sm">New booking received</p>
+                                                <p class="text-xs text-gray-500">Slot #12 booked for 2 hours</p>
+                                                <p class="text-xs text-gray-400 mt-1">2 minutes ago</p>
+                                            </div>
+                                        </div>
+                                    </a>
+                                    <a href="#" class="block px-4 py-3 hover:bg-gray-50 border-b">
+                                        <div class="flex items-start">
+                                            <div class="p-2 bg-yellow-100 rounded-full mr-3">
+                                                <i class="fas fa-exclamation-triangle text-yellow-600"></i>
+                                            </div>
+                                            <div>
+                                                <p class="font-medium text-sm">Maintenance alert</p>
+                                                <p class="text-xs text-gray-500">Slot #3 requires maintenance</p>
+                                                <p class="text-xs text-gray-400 mt-1">1 hour ago</p>
+                                            </div>
+                                        </div>
+                                    </a>
+                                    <a href="#" class="block px-4 py-3 hover:bg-gray-50">
+                                        <div class="flex items-start">
+                                            <div class="p-2 bg-green-100 rounded-full mr-3">
+                                                <i class="fas fa-dollar-sign text-green-600"></i>
+                                            </div>
+                                            <div>
+                                                <p class="font-medium text-sm">Payment received</p>
+                                                <p class="text-xs text-gray-500">$24.50 from booking #4567</p>
+                                                <p class="text-xs text-gray-400 mt-1">3 hours ago</p>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="p-2 border-t text-center">
+                                    <a href="#" class="text-sm text-indigo-600 hover:text-indigo-800">View all notifications</a>
+                                </div>
+                            </div>
+                        </div>
+                        <button id="logoutBtn" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 focus:outline-none flex items-center">
+                            <i class="fas fa-sign-out-alt mr-2"></i>
+                            <span>Logout</span>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard Content -->
+            <main class="p-6">
+                <!-- Welcome Banner -->
+                <div class="bg-gradient-to-r from-indigo-500 to-indigo-700 rounded-lg shadow-md p-6 mb-6 text-white">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <h2 class="text-2xl font-bold mb-2">Welcome back, John!</h2>
+                            <p class="opacity-90">Here's what's happening with your parking business today.</p>
+                        </div>
+                        <button class="mt-4 md:mt-0 bg-white text-indigo-600 px-4 py-2 rounded-md hover:bg-gray-100 focus:outline-none font-medium">
+                            <i class="fas fa-plus mr-2"></i> Quick Booking
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                    <div class="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-500">Total Slots</p>
+                                <h3 class="text-2xl font-bold">24</h3>
+                            </div>
+                            <div class="p-3 rounded-full bg-indigo-100 text-indigo-600">
+                                <i class="fas fa-parking text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <span class="text-green-500 text-sm font-medium flex items-center">
+                                <i class="fas fa-arrow-up mr-1"></i> +2 from last month
+                            </span>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-500">Available Now</p>
+                                <h3 class="text-2xl font-bold">8</h3>
+                            </div>
+                            <div class="p-3 rounded-full bg-green-100 text-green-600">
+                                <i class="fas fa-check-circle text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-center">
+                            <span class="slot-indicator slot-available"></span>
+                            <span class="text-sm text-gray-500">Available</span>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-500">Booked Today</p>
+                                <h3 class="text-2xl font-bold">14</h3>
+                            </div>
+                            <div class="p-3 rounded-full bg-red-100 text-red-600">
+                                <i class="fas fa-calendar-times text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-center">
+                            <span class="slot-indicator slot-booked"></span>
+                            <span class="text-sm text-gray-500">Booked</span>
+                            <span class="ml-4 slot-indicator slot-reserved"></span>
+                            <span class="text-sm text-gray-500">Reserved</span>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-500">Today's Earnings</p>
+                                <h3 class="text-2xl font-bold">$245.50</h3>
+                            </div>
+                            <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                                <i class="fas fa-dollar-sign text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <span class="text-green-500 text-sm font-medium flex items-center">
+                                <i class="fas fa-arrow-up mr-1"></i> +15% from yesterday
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts and Recent Bookings -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                    <!-- Earnings Chart -->
+                    <div class="bg-white rounded-lg shadow p-6 lg:col-span-2 hover:shadow-md transition-shadow">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-lg font-semibold">Weekly Earnings</h2>
+                            <div class="flex space-x-2">
+                                <button class="px-3 py-1 text-sm bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200">Week</button>
+                                <button class="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Month</button>
+                                <button class="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Year</button>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="earningsChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Recent Bookings -->
+                    <div class="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-lg font-semibold">Recent Bookings</h2>
+                            <button class="text-indigo-600 hover:text-indigo-800 text-sm font-medium">
+                                View All
+                            </button>
+                        </div>
+                        <div class="space-y-4">
+                            <div class="flex items-start p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                                <div class="p-2 bg-indigo-100 rounded-full mr-3">
+                                    <i class="fas fa-car text-indigo-600"></i>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="font-medium truncate">Slot #12</p>
+                                    <p class="text-sm text-gray-500 truncate">ABC 1234 • 2 hours</p>
+                                    <p class="text-sm truncate">Today, 09:30 AM - 11:30 AM</p>
+                                </div>
+                                <div class="ml-4 text-right">
+                                    <p class="font-medium">$12.00</p>
+                                    <span class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded">Completed</span>
+                                </div>
+                            </div>
+                            <div class="flex items-start p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                                <div class="p-2 bg-indigo-100 rounded-full mr-3">
+                                    <i class="fas fa-car text-indigo-600"></i>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="font-medium truncate">Slot #05</p>
+                                    <p class="text-sm text-gray-500 truncate">XYZ 5678 • 4 hours</p>
+                                    <p class="text-sm truncate">Today, 01:15 PM - 05:15 PM</p>
+                                </div>
+                                <div class="ml-4 text-right">
+                                    <p class="font-medium">$24.00</p>
+                                    <span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">Active</span>
+                                </div>
+                            </div>
+                            <div class="flex items-start p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                                <div class="p-2 bg-indigo-100 rounded-full mr-3">
+                                    <i class="fas fa-car text-indigo-600"></i>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="font-medium truncate">Slot #18</p>
+                                    <p class="text-sm text-gray-500 truncate">DEF 9012 • 1 hour</p>
+                                    <p class="text-sm truncate">Tomorrow, 10:00 AM - 11:00 AM</p>
+                                </div>
+                                <div class="ml-4 text-right">
+                                    <p class="font-medium">$8.00</p>
+                                    <span class="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded">Upcoming</span>
+                                </div>
+                            </div>
+                            <div class="flex items-start p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                                <div class="p-2 bg-indigo-100 rounded-full mr-3">
+                                    <i class="fas fa-car text-indigo-600"></i>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="font-medium truncate">Slot #03</p>
+                                    <p class="text-sm text-gray-500 truncate">GHI 3456 • 3 hours</p>
+                                    <p class="text-sm truncate">Yesterday, 02:30 PM - 05:30 PM</p>
+                                </div>
+                                <div class="ml-4 text-right">
+                                    <p class="font-medium">$18.00</p>
+                                    <span class="px-2 py-1 text-xs bg-red-100 text-red-800 rounded">Cancelled</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Parking Slots Visualization -->
+                <div class="bg-white rounded-lg shadow p-6 mb-6 hover:shadow-md transition-shadow">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-lg font-semibold">Parking Slots Visualization</h2>
+                        <div class="flex items-center space-x-2">
+                            <div class="flex items-center">
+                                <span class="slot-indicator slot-available mr-1"></span>
+                                <span class="text-xs text-gray-500 mr-2">Available</span>
+                            </div>
+                            <div class="flex items-center">
+                                <span class="slot-indicator slot-booked mr-1"></span>
+                                <span class="text-xs text-gray-500 mr-2">Booked</span>
+                            </div>
+                            <div class="flex items-center">
+                                <span class="slot-indicator slot-maintenance mr-1"></span>
+                                <span class="text-xs text-gray-500 mr-2">Maintenance</span>
+                            </div>
+                            <div class="flex items-center">
+                                <span class="slot-indicator slot-reserved mr-1"></span>
+                                <span class="text-xs text-gray-500">Reserved</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="parking-grid">
+                        <!-- Row 1 -->
+                        <div class="parking-slot bg-green-100 text-green-800 p-4 rounded-lg flex flex-col items-center justify-center">
+                            <div class="text-lg font-bold">#01</div>
+                            <div class="text-xs mt-1">Standard</div>
+                            <div class="text-xs mt-1">$5.00/hr</div>
+                        </div>
+                        <div class="parking-slot bg-red-100 text-red-800 p-4 rounded-lg flex flex-col items-center justify-center">
+                            <div class="text-lg font-bold">#02</div>
+                            <div class="text-xs mt-1">Large</div>
+                            <div class="text-xs mt-1">$7.50/hr</div>
+                        </div>
+                        <div class="parking-slot bg-yellow-100 text-yellow-800 p-4 rounded-lg flex flex-col items-center justify-center">
+                            <div class="text-lg font-bold">#03</div>
+                            <div class="text-xs mt-1">Standard</div>
+                            <div class="text-xs mt-1">$5.00/hr</div>
+                        </div>
+                        <div class="parking-slot bg-green-100 text-green-800 p-4 rounded-lg flex flex-col items-center justify-center">
+                            <div class="text-lg font-bold">#04</div>
+                            <div class="text-xs mt-1">Compact</div>
+                            <div class="text-xs mt-1">$4.00/hr</div>
+                        </div>
+                        <!-- Row 2 -->
+                        <div class="parking-slot bg-blue-100 text-blue-800 p-4 rounded-lg flex flex-col items-center justify-center">
+                            <div class="text-lg font-bold">#05</div>
+                            <div class="text-xs mt-1">Standard</div>
+                            <div class="text-xs mt-1">$5.00/hr</div>
+                        </div>
+                        <div class="parking-slot bg-green-100 text-green-800 p-4 rounded-lg flex flex-col items-center justify-center">
+                            <div class="text-lg font-bold">#06</div>
+                            <div class="text-xs mt-1">Large</div>
+                            <div class="text-xs mt-1">$7.50/hr</div>
+                        </div>
+                        <div class="parking-slot bg-green-100 text-green-800 p-4 rounded-lg flex flex-col items-center justify-center">
+                            <div class="text-lg font-bold">#07</div>
+                            <div class="text-xs mt-1">Standard</div>
+                            <div class="text-xs mt-1">$5.00/hr</div>
+                        </div>
+                        <div class="parking-slot bg-red-100 text-red-800 p-4 rounded-lg flex flex-col items-center justify-center">
+                            <div class="text-lg font-bold">#08</div>
+                            <div class="text-xs mt-1">Compact</div>
+                            <div class="text-xs mt-1">$4.00/hr</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Parking Slots Management -->
+                <div class="bg-white rounded-lg shadow overflow-hidden mb-6 hover:shadow-md transition-shadow">
+                    <div class="p-6 border-b flex justify-between items-center">
+                        <h2 class="text-lg font-semibold">Parking Slots Management</h2>
+                        <div class="flex space-x-3">
+                            <div class="relative">
+                                <button id="filterButton" class="flex items-center text-gray-600 hover:text-gray-900 px-3 py-2 border rounded-md">
+                                    <i class="fas fa-filter mr-2"></i>
+                                    <span>Filter</span>
+                                </button>
+                                <div id="filterDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 dropdown-menu">
+                                    <div class="py-1">
+                                        <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">All Slots</a>
+                                        <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Available</a>
+                                        <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Booked</a>
+                                        <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Maintenance</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <button id="addSlotBtn" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 focus:outline-none flex items-center">
+                                <i class="fas fa-plus mr-2"></i> Add New Slot
+                            </button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Slot ID</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price/Hour</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4 whitespace-nowrap">#01</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">North Wing</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">Standard</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">$5.00</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded">Available</span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <button class="text-indigo-600 hover:text-indigo-900 mr-3">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="text-red-600 hover:text-red-900">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4 whitespace-nowrap">#02</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">South Wing</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">Large</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">$7.50</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="px-2 py-1 text-xs bg-red-100 text-red-800 rounded">Booked</span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <button class="text-indigo-600 hover:text-indigo-900 mr-3">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="text-red-600 hover:text-red-900">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4 whitespace-nowrap">#03</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">East Wing</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">Standard</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">$5.00</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded">Maintenance</span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <button class="text-indigo-600 hover:text-indigo-900 mr-3">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="text-red-600 hover:text-red-900">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4 whitespace-nowrap">#04</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">West Wing</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">Compact</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">$4.00</td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded">Available</span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <button class="text-indigo-600 hover:text-indigo-900 mr-3">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="text-red-600 hover:text-red-900">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="px-6 py-4 border-t flex items-center justify-between">
+                        <div class="text-sm text-gray-500">
+                            Showing <span class="font-medium">1</span> to <span class="font-medium">4</span> of <span class="font-medium">24</span> slots
+                        </div>
+                        <div class="flex space-x-2">
+                            <button class="px-3 py-1 border rounded text-gray-700 bg-white hover:bg-gray-50">Previous</button>
+                            <button class="px-3 py-1 border rounded bg-indigo-600 text-white pagination-btn active">1</button>
+                            <button class="px-3 py-1 border rounded text-gray-700 bg-white hover:bg-gray-50 pagination-btn">2</button>
+                            <button class="px-3 py-1 border rounded text-gray-700 bg-white hover:bg-gray-50 pagination-btn">3</button>
+                            <button class="px-3 py-1 border rounded text-gray-700 bg-white hover:bg-gray-50">Next</button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Add Slot Modal -->
+    <div id="addSlotModal" class="fixed inset-0 z-50 flex items-center justify-center hidden modal-overlay">
+        <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div class="p-6 border-b">
+                <h3 class="text-lg font-semibold">Add New Parking Slot</h3>
+                <button id="closeModal" class="absolute top-4 right-4 text-gray-400 hover:text-gray-500">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-6">
+                <form id="slotForm">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2" for="slotLocation">Location</label>
+                        <select id="slotLocation" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="north">North Wing</option>
+                            <option value="south">South Wing</option>
+                            <option value="east">East Wing</option>
+                            <option value="west">West Wing</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2" for="slotSize">Size</label>
+                        <select id="slotSize" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="compact">Compact</option>
+                            <option value="standard">Standard</option>
+                            <option value="large">Large</option>
+                            <option value="oversized">Oversized</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2" for="slotPrice">Price per Hour ($)</label>
+                        <input type="number" id="slotPrice" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" min="1" step="0.5" value="5.00">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2" for="slotStatus">Initial Status</label>
+                        <select id="slotStatus" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="available">Available</option>
+                            <option value="maintenance">Maintenance</option>
+                            <option value="reserved">Reserved</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2" for="slotNotes">Notes (Optional)</label>
+                        <textarea id="slotNotes" rows="2" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="p-6 border-t flex justify-end space-x-3">
+                <button id="cancelAddSlot" class="px-4 py-2 text-gray-700 border rounded-md hover:bg-gray-100 focus:outline-none">
+                    Cancel
+                </button>
+                <button id="confirmAddSlot" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none flex items-center">
+                    <i class="fas fa-plus mr-2"></i> Add Slot
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Toast -->
+    <div id="successToast" class="fixed bottom-4 right-4 hidden">
+        <div class="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center">
+            <i class="fas fa-check-circle mr-2"></i>
+            <span>Slot added successfully!</span>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Set current date
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', options);
+
+        // Toggle Sidebar
+        document.getElementById('toggleSidebar').addEventListener('click', function() {
+            const sidebar = document.querySelector('.sidebar');
+            const mainContent = document.querySelector('.main-content');
+            
+            sidebar.classList.toggle('collapsed');
+            
+            if (sidebar.classList.contains('collapsed')) {
+                mainContent.classList.remove('ml-64');
+                mainContent.classList.add('ml-16');
+            } else {
+                mainContent.classList.remove('ml-16');
+                mainContent.classList.add('ml-64');
+            }
+        });
+
+        // Notification Dropdown
+        const notificationButton = document.getElementById('notificationButton');
+        const notificationDropdown = document.getElementById('notificationDropdown');
+        
+        notificationButton.addEventListener('click', function() {
+            notificationDropdown.classList.toggle('hidden');
+            notificationDropdown.classList.toggle('fade-in');
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            if (!notificationButton.contains(event.target) && !notificationDropdown.contains(event.target)) {
+                notificationDropdown.classList.add('hidden');
+            }
+        });
+
+        // Filter Dropdown
+        const filterButton = document.getElementById('filterButton');
+        const filterDropdown = document.getElementById('filterDropdown');
+        
+        filterButton.addEventListener('click', function() {
+            filterDropdown.classList.toggle('hidden');
+            filterDropdown.classList.toggle('fade-in');
+        });
+
+        // Close filter dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            if (!filterButton.contains(event.target) && !filterDropdown.contains(event.target)) {
+                filterDropdown.classList.add('hidden');
+            }
+        });
+
+        // Modal Handling
+        const addSlotBtn = document.getElementById('addSlotBtn');
+        const addSlotModal = document.getElementById('addSlotModal');
+        const closeModal = document.getElementById('closeModal');
+        const cancelAddSlot = document.getElementById('cancelAddSlot');
+        const confirmAddSlot = document.getElementById('confirmAddSlot');
+        const successToast = document.getElementById('successToast');
+        
+        function openModal() {
+            addSlotModal.classList.remove('hidden');
+            setTimeout(() => {
+                document.querySelector('.modal-content').classList.add('entered');
+            }, 10);
+        }
+        
+        function closeModalFunc() {
+            document.querySelector('.modal-content').classList.add('exiting');
+            setTimeout(() => {
+                addSlotModal.classList.add('hidden');
+                document.querySelector('.modal-content').classList.remove('entered', 'exiting');
+            }, 300);
+        }
+        
+        addSlotBtn.addEventListener('click', openModal);
+        closeModal.addEventListener('click', closeModalFunc);
+        cancelAddSlot.addEventListener('click', closeModalFunc);
+        
+        // Close modal when clicking outside
+        addSlotModal.addEventListener('click', function(event) {
+            if (event.target === addSlotModal) {
+                closeModalFunc();
+            }
+        });
+        
+        confirmAddSlot.addEventListener('click', function() {
+            // Here you would typically send data to Firebase
+            closeModalFunc();
+            
+            // Show success toast
+            successToast.classList.remove('hidden');
+            setTimeout(() => {
+                successToast.classList.add('hidden');
+            }, 3000);
+            
+            document.getElementById('slotForm').reset();
+        });
+
+        // Logout Functionality
+        document.getElementById('logoutBtn').addEventListener('click', function() {
+            firebase.auth().signOut().then(() => {
+                window.location.href = 'login.html';
+            }).catch((error) => {
+                console.error('Logout error:', error);
+            });
+        });
+
+        // Earnings Chart
+        const ctx = document.getElementById('earningsChart').getContext('2d');
+        const earningsChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [{
+                    label: 'Earnings ($)',
+                    data: [120, 190, 170, 200, 240, 280, 210],
+                    backgroundColor: '#6366F1',
+                    borderRadius: 6,
+                    hoverBackgroundColor: '#4F46E5'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: '#1F2937',
+                        titleFont: {
+                            size: 14,
+                            weight: 'bold'
+                        },
+                        bodyFont: {
+                            size: 12
+                        },
+                        padding: 12,
+                        cornerRadius: 8,
+                        displayColors: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            drawBorder: false,
+                            color: '#E5E7EB'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value;
+                            }
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+
+        // Parking slot click handlers
+        document.querySelectorAll('.parking-slot').forEach(slot => {
+            slot.addEventListener('click', function() {
+                const slotNumber = this.querySelector('div:first-child').textContent;
+                alert(`You clicked on parking slot ${slotNumber}`);
+            });
+        });
+
+        // Pagination buttons
+        document.querySelectorAll('.pagination-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.pagination-btn').forEach(b => {
+                    b.classList.remove('active', 'bg-indigo-600', 'text-white');
+                    b.classList.add('text-gray-700', 'bg-white');
+                });
+                this.classList.add('active', 'bg-indigo-600', 'text-white');
+                this.classList.remove('text-gray-700', 'bg-white');
+            });
+        });
+
+        // Firebase Real-time Updates (example)
+        function setupRealtimeUpdates() {
+            const slotsRef = firebase.database().ref('parkingSlots');
+            slotsRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                // Update UI with real-time data
+                console.log('Real-time data:', data);
+            });
+        }
+
+        // Initialize when Firebase auth is ready
+        firebase.auth().onAuthStateChanged((user) => {
+            if (user) {
+                setupRealtimeUpdates();
+            } else {
+                // Redirect to login if not authenticated
+                window.location.href = 'login.html';
+            }
+        });
+    </script>
+</body>
+</html>

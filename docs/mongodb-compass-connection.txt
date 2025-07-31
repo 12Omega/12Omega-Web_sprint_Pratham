@@ -1,0 +1,98 @@
+# MongoDB Compass Connection Information
+
+## Local Development Connection
+Connection String: mongodb://localhost:27017/parkease
+
+## Connection Settings
+1. Open MongoDB Compass
+2. Click "New Connection"
+3. Paste the connection string: mongodb://localhost:27017/parkease
+4. Click "Connect"
+
+## Database Structure
+Database: parkease
+Collections:
+- users: User accounts and profiles
+- parkingspots: Parking spot information
+- bookings: Booking records and history
+
+## Sample Queries
+
+### Find all users
+```
+db.users.find({})
+```
+
+### Find available parking spots
+```
+db.parkingspots.find({ status: "available" })
+```
+
+### Find active bookings
+```
+db.bookings.find({ 
+  status: "active",
+  startTime: { $lte: new Date() },
+  endTime: { $gte: new Date() }
+})
+```
+
+### Find bookings for a specific user
+```
+db.bookings.find({ user: ObjectId("user_id_here") })
+```
+
+### Find earnings data for dashboard
+```
+db.bookings.aggregate([
+  { 
+    $match: { 
+      status: "completed" 
+    } 
+  },
+  {
+    $group: {
+      _id: { 
+        $dateToString: { 
+          format: "%Y-%m", 
+          date: "$endTime" 
+        } 
+      },
+      earnings: { $sum: "$totalAmount" }
+    }
+  },
+  {
+    $project: {
+      _id: 0,
+      month: "$_id",
+      earnings: 1
+    }
+  },
+  { $sort: { month: 1 } }
+])
+```
+
+### Find user growth data for dashboard
+```
+db.users.aggregate([
+  {
+    $group: {
+      _id: { 
+        $dateToString: { 
+          format: "%Y-%m", 
+          date: "$createdAt" 
+        } 
+      },
+      count: { $sum: 1 }
+    }
+  },
+  {
+    $project: {
+      _id: 0,
+      month: "$_id",
+      count: 1
+    }
+  },
+  { $sort: { month: 1 } }
+])
+```

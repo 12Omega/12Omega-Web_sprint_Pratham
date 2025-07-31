@@ -1,0 +1,405 @@
+openapi: 3.0.0
+info:
+  title: Smart Parking API
+  version: 1.0.0
+  description: API for managing users, products (if any), and other resources.
+
+servers:
+  - url: http://localhost:5000/api
+    description: Local development server
+
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        _id:
+          type: string
+          format: ObjectId
+          readOnly: true
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [user, admin]
+        isActive:
+          type: boolean
+        firstName:
+          type: string
+        lastName:
+          type: string
+        lastLoginAt:
+          type: string
+          format: date-time
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+    UserInputRequired:
+      type: object
+      required:
+        - username
+        - email
+        - password
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+    UserLogin:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        userId:
+          type: string
+        username:
+          type: string
+        role:
+          type: string
+    Product:
+      type: object
+      properties:
+        _id:
+          type: string
+          format: ObjectId
+          readOnly: true
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+          format: float
+        category:
+          type: string
+        brand:
+          type: string
+        sku:
+          type: string
+        stock:
+          type: integer
+        images:
+          type: array
+          items:
+            type: string
+        tags:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [active, inactive, discontinued]
+        featured:
+          type: boolean
+        weight:
+          type: number
+        dimensions:
+          type: object
+          properties:
+            length: 
+              type: number
+            width:
+              type: number
+            height:
+              type: number
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+    ProductInputRequired:
+      type: object
+      required:
+        - name
+        - description
+        - price
+        - category
+        - sku
+        - stock
+      properties:
+        name: { type: string }
+        description: { type: string }
+        price: { type: number }
+        category: { type: string }
+        brand: { type: string, nullable: true }
+        sku: { type: string }
+        stock: { type: integer, default: 0 }
+        images: { type: array, items: { type: string }, nullable: true }
+        tags: { type: array, items: { type: string }, nullable: true }
+        status: { type: string, enum: [active, inactive, discontinued], default: 'active' }
+        featured: { type: boolean, default: false }
+        weight: { type: number, nullable: true }
+        dimensions: { 
+          type: object, 
+          properties: { length: {type: number}, width: {type: number}, height: {type: number} },
+          nullable: true 
+        }
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        errors: # For validation errors
+          type: object 
+        field: # For duplicate key errors
+          type: string
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+paths:
+  /auth/register:
+    post:
+      summary: Register a new user
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserInputRequired'
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  user: { $ref: '#/components/schemas/User' }
+        '400':
+          description: Invalid input or validation error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '409':
+          description: User with this username or email already exists
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /auth/login:
+    post:
+      summary: Login an existing user
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserLogin'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '400':
+          description: Username and password are required
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: Account is inactive
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /products:
+    get:
+      summary: Get a list of products
+      tags: [Products]
+      parameters:
+        - name: category
+          in: query
+          schema: { type: string }
+          required: false
+        - name: brand
+          in: query
+          schema: { type: string }
+          required: false
+        - name: status
+          in: query
+          schema: { type: string, enum: [active, inactive, discontinued] }
+          required: false
+        - name: minPrice
+          in: query
+          schema: { type: number }
+          required: false
+        - name: maxPrice
+          in: query
+          schema: { type: number }
+          required: false
+        - name: search
+          in: query
+          schema: { type: string }
+          required: false
+        - name: sortBy
+          in: query
+          schema: { type: string, enum: [name, price, createdAt] }
+          required: false
+        - name: sortOrder
+          in: query
+          schema: { type: string, enum: [asc, desc] }
+          required: false
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+          required: false
+        - name: limit
+          in: query
+          schema: { type: integer, default: 10 }
+          required: false
+      responses:
+        '200':
+          description: A list of products
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+                  pagination:
+                    type: object
+                    properties:
+                      currentPage: { type: integer }
+                      totalPages: { type: integer }
+                      totalProducts: { type: integer }
+                      limit: { type: integer }
+                  _links:
+                    type: object # HATEOAS links
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    post:
+      summary: Create a new product
+      tags: [Products]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductInputRequired'
+      responses:
+        '201':
+          description: Product created successfully
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Product' }
+        '400':
+          description: Invalid input or validation error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401':
+          description: Unauthorized (token missing or invalid)
+        '409':
+          description: Duplicate SKU or other unique field
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /products/{id}:
+    get:
+      summary: Get a single product by ID
+      tags: [Products]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: ObjectId
+      responses:
+        '200':
+          description: A single product
+          headers:
+            ETag:
+              schema: { type: string }
+            Last-Modified:
+              schema: { type: string, format: "date-time" }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Product' } # Add _links here too if desired
+        '304':
+          description: Not Modified
+        '400':
+          description: Invalid product ID format
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+# Further paths for PUT, DELETE products, and all User CRUD operations would follow a similar pattern.
+# Also, dashboard routes.
