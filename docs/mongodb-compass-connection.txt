@@ -1,13 +1,22 @@
-# MongoDB Compass Connection Information
+# MongoDB Compass Connection Information (Updated for Latest Version)
 
 ## Local Development Connection
 Connection String: mongodb://localhost:27017/parkease
 
-## Connection Settings
-1. Open MongoDB Compass
-2. Click "New Connection"
-3. Paste the connection string: mongodb://localhost:27017/parkease
-4. Click "Connect"
+## Connection Settings (Latest MongoDB Compass)
+1. Open MongoDB Compass (Latest Version)
+2. On the welcome screen, you'll see "New Connection" button or use the "+" icon in the sidebar
+3. Choose "Connect to a MongoDB deployment"
+4. In the connection string field, paste: mongodb://localhost:27017/parkease
+5. Click "Save & Connect" (or just "Connect" for one-time connection)
+6. Optionally, give your connection a name like "ParkEase Local" for easy identification
+
+## New Features in Latest Compass
+- **Connection Management**: Save multiple connections with custom names
+- **Enhanced Query Bar**: Improved autocomplete and syntax highlighting
+- **Performance Insights**: Built-in performance monitoring
+- **Schema Validation**: Visual schema validation rules
+- **Aggregation Pipeline Builder**: Drag-and-drop pipeline creation
 
 ## Database Structure
 Database: parkease
@@ -16,35 +25,56 @@ Collections:
 - parkingspots: Parking spot information
 - bookings: Booking records and history
 
-## Sample Queries
+## Sample Queries (Updated for Latest Compass)
 
-### Find all users
+### Find all users (Use Documents tab or Query Bar)
+**Query Bar:**
+```javascript
+{}
 ```
-db.users.find({})
+**Filter (in Documents tab):**
+```json
+{}
 ```
 
 ### Find available parking spots
-```
-db.parkingspots.find({ status: "available" })
+**Query Bar:**
+```javascript
+{ status: "available" }
 ```
 
 ### Find active bookings
-```
-db.bookings.find({ 
+**Query Bar:**
+```javascript
+{ 
   status: "active",
   startTime: { $lte: new Date() },
   endTime: { $gte: new Date() }
-})
+}
 ```
 
 ### Find bookings for a specific user
-```
-db.bookings.find({ user: ObjectId("user_id_here") })
+**Query Bar:**
+```javascript
+{ user: ObjectId("user_id_here") }
 ```
 
+### Using the New Query Builder (Visual Mode)
+1. Click on the collection (users, parkingspots, bookings)
+2. Use the "Filter" field for simple queries
+3. Click "Options" to access Sort, Project, Skip, and Limit
+4. Use the "Aggregations" tab for complex queries
+
+## Aggregation Pipelines (Use Aggregations Tab)
+
 ### Find earnings data for dashboard
-```
-db.bookings.aggregate([
+**Using the new Aggregation Pipeline Builder:**
+1. Go to bookings collection
+2. Click "Aggregations" tab
+3. Add stages using the visual builder or paste this pipeline:
+
+```javascript
+[
   { 
     $match: { 
       status: "completed" 
@@ -69,12 +99,13 @@ db.bookings.aggregate([
     }
   },
   { $sort: { month: 1 } }
-])
+]
 ```
 
 ### Find user growth data for dashboard
-```
-db.users.aggregate([
+**Aggregation Pipeline:**
+```javascript
+[
   {
     $group: {
       _id: { 
@@ -94,5 +125,49 @@ db.users.aggregate([
     }
   },
   { $sort: { month: 1 } }
-])
+]
 ```
+
+## Latest Compass Features for Development
+
+### 1. Schema Analysis
+- Navigate to any collection and click "Schema" tab
+- View field types, distributions, and sample values
+- Identify data quality issues
+
+### 2. Performance Monitoring
+- Click "Performance" tab to view slow operations
+- Monitor real-time metrics
+- Identify optimization opportunities
+
+### 3. Validation Rules
+- Set up document validation in the "Validation" tab
+- Create JSON Schema validation rules
+- Test validation with sample documents
+
+### 4. Index Management
+- View and create indexes in the "Indexes" tab
+- Analyze index usage and performance
+- Get index recommendations
+
+### 5. Import/Export Data
+- Use "Collection" menu for import/export options
+- Support for JSON, CSV, and BSON formats
+- Bulk operations with progress tracking
+
+## Troubleshooting Latest Version
+
+### Connection Issues
+- Ensure MongoDB service is running: `net start MongoDB` (Windows)
+- Check firewall settings for port 27017
+- Verify connection string format
+
+### Performance Tips
+- Use indexes for frequently queried fields
+- Limit result sets with proper filtering
+- Use the Explain Plan feature for query optimization
+
+### New UI Navigation
+- Collections are now in a collapsible sidebar
+- Use Ctrl+K (Cmd+K on Mac) for quick navigation
+- Breadcrumb navigation for easy back-tracking

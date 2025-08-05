@@ -43,7 +43,7 @@ async function testFrontendAPI() {
         email: 'admin@parkease.com',
         password: 'password123'
       });
-      authToken = loginResponse.data.data.token;
+      authToken = loginResponse?.data?.token || response.data.token;
       console.log('✅ Frontend login successful, token obtained');
     } catch (loginError) {
       console.log('❌ Frontend login failed:');

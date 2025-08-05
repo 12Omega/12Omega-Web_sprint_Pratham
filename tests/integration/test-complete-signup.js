@@ -19,9 +19,9 @@ async function testCompleteSignup() {
     
     const basicResponse = await axios.post('http://localhost:5002/api/auth/register', basicUser);
     console.log('✅ Basic registration successful!');
-    console.log('User:', basicResponse.data.data.user.name);
-    console.log('Email:', basicResponse.data.data.user.email);
-    console.log('Role:', basicResponse.data.data.user.role);
+    console.log('User:', basicResponse?.data?.user || response.data.user.name);
+    console.log('Email:', basicResponse?.data?.user || response.data.user.email);
+    console.log('Role:', basicResponse?.data?.user || response.data.user.role);
     
     // Test 2: Registration with phone
     console.log('\n2. Testing registration with phone...');
@@ -34,8 +34,8 @@ async function testCompleteSignup() {
     
     const phoneResponse = await axios.post('http://localhost:5002/api/auth/register', phoneUser);
     console.log('✅ Registration with phone successful!');
-    console.log('User:', phoneResponse.data.data.user.name);
-    console.log('Phone:', phoneResponse.data.data.user.phone);
+    console.log('User:', phoneResponse?.data?.user || response.data.user.name);
+    console.log('Phone:', phoneResponse?.data?.user || response.data.user.phone);
     
     // Test 3: Test validation errors
     console.log('\n3. Testing validation errors...');
@@ -80,20 +80,20 @@ async function testCompleteSignup() {
     });
     
     console.log('✅ Login after registration successful!');
-    console.log('User:', loginResponse.data.data.user.name);
-    console.log('Token received:', loginResponse.data.data.token ? 'Yes' : 'No');
+    console.log('User:', loginResponse?.data?.user || response.data.user.name);
+    console.log('Token received:', loginResponse?.data?.token || response.data.token ? 'Yes' : 'No');
     
     // Test 5: Test profile access with token
     console.log('\n5. Testing profile access with token...');
     const profileResponse = await axios.get('http://localhost:5002/api/auth/profile', {
       headers: {
-        'Authorization': `Bearer ${loginResponse.data.data.token}`
+        'Authorization': `Bearer ${loginResponse?.data?.token || response.data.token}`
       }
     });
     
     console.log('✅ Profile access successful!');
-    console.log('Profile name:', profileResponse.data.data.user.name);
-    console.log('Profile email:', profileResponse.data.data.user.email);
+    console.log('Profile name:', profileResponse?.data?.user || response.data.user.name);
+    console.log('Profile email:', profileResponse?.data?.user || response.data.user.email);
     
     console.log('\n🎉 All signup functionality tests passed!');
     console.log('\n📋 Summary:');

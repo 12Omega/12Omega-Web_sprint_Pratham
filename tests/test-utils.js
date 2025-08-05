@@ -3,8 +3,8 @@
  * Common functions and helpers for all test suites
  */
 
-const axios = require('axios');
-const config = require('./test.config');
+import axios from 'axios';
+import config from './test.config.js';
 
 class TestUtils {
   constructor() {

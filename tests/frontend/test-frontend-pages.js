@@ -15,7 +15,7 @@ async function testFrontendPages() {
       email: 'admin@parkease.com',
       password: 'password123'
     });
-    const authToken = loginResponse.data.data.token;
+    const authToken = loginResponse?.data?.token || response.data.token;
     console.log('✅ Authentication token obtained');
     
     // Test 2: Test bookings API structure

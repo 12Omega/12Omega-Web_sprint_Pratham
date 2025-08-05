@@ -3,7 +3,7 @@
  * Central configuration for all test suites
  */
 
-module.exports = {
+export default {
   // Test environment settings
   environment: {
     NODE_ENV: 'test',
@@ -12,11 +12,19 @@ module.exports = {
     TEST_TIMEOUT: 30000, // 30 seconds
   },
 
-  // Database settings for testing
+  // Database settings for testing (Updated for latest MongoDB)
   database: {
     MONGODB_URI: process.env.MONGODB_TEST_URI || 'mongodb://localhost:27017/parkease_test',
     DROP_DATABASE_BEFORE_TESTS: true,
     SEED_TEST_DATA: true,
+    // Connection options for latest MongoDB/Mongoose
+    CONNECTION_OPTIONS: {
+      maxPoolSize: 5,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+      bufferCommands: false,
+      bufferMaxEntries: 0
+    },
   },
 
   // Test user credentials for authentication tests

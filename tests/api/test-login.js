@@ -19,8 +19,8 @@ async function testAuth() {
       console.log('Response data:', registerResponse.data);
       
       if (registerResponse.data.data?.user) {
-        console.log('User:', registerResponse.data.data.user.name);
-        console.log('Token received:', registerResponse.data.data.token ? 'Yes' : 'No');
+        console.log('User:', registerResponse?.data?.user || response.data.user.name);
+        console.log('Token received:', registerResponse?.data?.token || response.data.token ? 'Yes' : 'No');
       } else if (registerResponse.data.user) {
         console.log('User:', registerResponse.data.user.name);
         console.log('Token received:', registerResponse.data.token ? 'Yes' : 'No');
@@ -40,11 +40,11 @@ async function testAuth() {
       }
     }
     
-    // Now test login with the known credentials
+    // Now test login with the known credentials (use seeded user)
     console.log('\n2. Testing login with known credentials...');
     const loginResponse = await axios.post('http://localhost:5002/api/auth/login', {
-      email: 'testuser@parkease.com',
-      password: 'Password123' // Updated to match registration password
+      email: 'john@example.com', // Use seeded user instead
+      password: 'password123' // Use seeded password
     });
     
     console.log('✅ Login successful!');

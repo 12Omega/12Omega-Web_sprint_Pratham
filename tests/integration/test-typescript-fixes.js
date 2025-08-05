@@ -17,12 +17,12 @@ async function testTypeScriptFixes() {
     });
     
     console.log('✅ JWT token generated successfully');
-    console.log('Token exists:', !!loginResponse.data.data.token);
-    console.log('User ID exists:', !!loginResponse.data.data.user.id);
+    console.log('Token exists:', !!loginResponse?.data?.token || response.data.token);
+    console.log('User ID exists:', !!loginResponse?.data?.user || response.data.user.id);
     
     // Test 2: Test payments API structure
     console.log('\n2. Testing payments API...');
-    const authToken = loginResponse.data.data.token;
+    const authToken = loginResponse?.data?.token || response.data.token;
     
     try {
       const paymentsResponse = await axios.get('http://localhost:3000/api/payments', {

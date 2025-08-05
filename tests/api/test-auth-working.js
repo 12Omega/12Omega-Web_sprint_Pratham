@@ -17,9 +17,12 @@ async function testWorkingAuth() {
     });
     
     console.log('✅ Admin login successful!');
-    console.log('User:', adminLogin.data.data.user.name);
-    console.log('Role:', adminLogin.data.data.user.role);
-    console.log('Token received:', adminLogin.data.data.token ? 'Yes' : 'No');
+    // Handle both response formats (nested data or direct)
+    const adminUser = adminLogin.data.data?.user || adminLogin.data.user;
+    const adminToken = adminLogin.data.data?.token || adminLogin.data.token;
+    console.log('User:', adminUser?.name || 'Unknown');
+    console.log('Role:', adminUser?.role || 'Unknown');
+    console.log('Token received:', adminToken ? 'Yes' : 'No');
     
     // Test with seeded regular user
     console.log('\n2. Testing regular user login...');
@@ -29,20 +32,24 @@ async function testWorkingAuth() {
     });
     
     console.log('✅ User login successful!');
-    console.log('User:', userLogin.data.data.user.name);
-    console.log('Role:', userLogin.data.data.user.role);
-    console.log('Token received:', userLogin.data.data.token ? 'Yes' : 'No');
+    // Handle both response formats (nested data or direct)
+    const regularUser = userLogin.data.data?.user || userLogin.data.user;
+    const regularToken = userLogin.data.data?.token || userLogin.data.token;
+    console.log('User:', regularUser?.name || 'Unknown');
+    console.log('Role:', regularUser?.role || 'Unknown');
+    console.log('Token received:', regularToken ? 'Yes' : 'No');
     
     // Test profile access with token
     console.log('\n3. Testing profile access...');
     const profileResponse = await axios.get('http://localhost:5002/api/auth/profile', {
       headers: {
-        'Authorization': `Bearer ${userLogin.data.data.token}`
+        'Authorization': `Bearer ${regularToken}`
       }
     });
     
     console.log('✅ Profile access successful!');
-    console.log('Profile:', profileResponse.data.data.user.name);
+    const profileUser = profileResponse.data.data?.user || profileResponse.data.user;
+    console.log('Profile:', profileUser?.name || regularUser?.name || 'Unknown');
     
     console.log('\n🎉 All authentication tests passed!');
     console.log('\n📝 Available test users:');

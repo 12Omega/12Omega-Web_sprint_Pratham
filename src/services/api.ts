@@ -41,9 +41,9 @@ apiClient.interceptors.response.use(
     const { response } = error;
 
     if (response?.status === 401) {
-      // Unauthorized - clear token and redirect to login
+      // Unauthorized - clear token but don't force redirect
+      // Let the AuthContext and ProtectedRoute handle the redirect
       localStorage.removeItem('token');
-      window.location.href = '/login';
       toast.error('Session expired. Please login again.');
     } else if (response?.status === 403) {
       toast.error('Access denied. Insufficient permissions.');

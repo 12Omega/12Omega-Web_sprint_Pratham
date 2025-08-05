@@ -46,7 +46,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       try {
         const response = await authAPI.getProfile();
-        setUser(response.data.data.user);
+        setUser(response.data);
       } catch (error) {
         localStorage.removeItem('token');
       } finally {
@@ -60,7 +60,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     try {
       const response = await authAPI.login({ email, password });
-      const { token, user } = response.data.data;
+      const { token, user } = response.data;
       localStorage.setItem('token', token);
       setUser(user);
       toast.success('Login successful');
@@ -74,7 +74,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (name: string, email: string, password: string, phone?: string) => {
     try {
       const response = await authAPI.register({ name, email, password, phone });
-      const { token, user } = response.data.data;
+      const { token, user } = response.data;
       localStorage.setItem('token', token);
       setUser(user);
       toast.success('Registration successful');

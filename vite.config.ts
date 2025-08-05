@@ -6,11 +6,13 @@ import { resolve } from 'path'
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 3000,
+    port: 5173,
+    host: true,
     proxy: {
       '/api': {
         target: 'http://localhost:5002',
         changeOrigin: true,
+        secure: false,
       },
     },
   },

@@ -26,8 +26,55 @@ app.get('/', (req, res) => {
   res.send('ParkEase API Server is running!');
 });
 
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    status: 'OK',
+    message: 'ParkEase API is running',
+    timestamp: new Date().toISOString(),
+    links: [
+      { rel: 'auth', href: '/api/auth' },
+      { rel: 'spots', href: '/api/spots' },
+      { rel: 'bookings', href: '/api/bookings' },
+      { rel: 'dashboard', href: '/api/dashboard' },
+      { rel: 'payments', href: '/api/payments' }
+    ]
+  });
+});
+
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/spots', require('./routes/spots'));
+
+try {
+  app.use('/api/bookings', require('./routes/bookings'));
+} catch (e) {
+  console.log('Bookings routes not found, skipping...');
+}
+
+try {
+  app.use('/api/dashboard', require('./routes/dashboard'));
+} catch (e) {
+  console.log('Dashboard routes not found, skipping...');
+}
+
+try {
+  app.use('/api/payments', require('./routes/payments'));
+} catch (e) {
+  console.log('Payments routes not found, skipping...');
+}
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({
+    error: 'Route not found',
+    message: `Cannot ${req.method} ${req.originalUrl}`,
+    links: [
+      { rel: 'api-docs', href: '/api/health' }
+    ]
+  });
+});
 
 app.listen(port, () => {
-  console.log(`Server listening at http://localhost:${port}`);
+  console.log(`🚗 ParkEase Server running on port ${port}`);
+  console.log(`📍 API Health: http://localhost:${port}/api/health`);
 });

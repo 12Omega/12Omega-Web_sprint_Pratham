@@ -46,7 +46,7 @@ async function testAPIEndpoints() {
         email: 'admin@parkease.com',
         password: 'password123'
       });
-      authToken = loginResponse.data.data.token;
+      authToken = loginResponse?.data?.token || response.data.token;
       console.log('✅ Login successful, token obtained');
     } catch (loginError) {
       console.log('❌ Login failed:');

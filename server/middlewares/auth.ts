@@ -16,9 +16,10 @@ declare global {
 }
 
 interface JwtPayload {
-  id: string;
-  email: string;
-  role: string;
+  user: {
+    id: string;
+    role: string;
+  };
 }
 
 /**
@@ -47,7 +48,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET) as JwtPayload;
     
-    const user = await User.findById(decoded.id).select('+password');
+    const user = await User.findById(decoded.user.id).select('+password');
     if (!user) {
       return res.status(401).json({
         error: 'Invalid token',
@@ -120,7 +121,7 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET) as JwtPayload;
-    const user = await User.findById(decoded.id);
+    const user = await User.findById(decoded.user.id);
     
     if (user) {
       req.user = user;
